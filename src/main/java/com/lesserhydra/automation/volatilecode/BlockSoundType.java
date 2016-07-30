@@ -27,7 +27,7 @@ public enum BlockSoundType {
 	
 	
 	private static final Map<SoundEffectType, BlockSoundType> typeMap =
-			MapBuilder.init(() -> new HashMap<SoundEffectType, BlockSoundType>())
+			MapBuilder.init(HashMap<SoundEffectType, BlockSoundType>::new)
 			.put(SoundEffectType.a, WOOD)
 			.put(SoundEffectType.b, GRAVEL)
 			.put(SoundEffectType.c, GRASS)

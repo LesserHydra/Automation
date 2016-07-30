@@ -2,8 +2,8 @@ package com.lesserhydra.automation.volatilecode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.stream.Collectors;
 import org.bukkit.block.Dispenser;
 import org.bukkit.craftbukkit.v1_10_R1.CraftChunk;
@@ -16,6 +16,7 @@ import org.bukkit.material.Diode;
 import com.lesserhydra.bukkitutil.RedstoneUtil;
 import net.minecraft.server.v1_10_R1.Block;
 import net.minecraft.server.v1_10_R1.BlockDispenser;
+import net.minecraft.server.v1_10_R1.BlockDirectional;
 import net.minecraft.server.v1_10_R1.BlockPosition;
 import net.minecraft.server.v1_10_R1.EntityEnderPearl;
 import net.minecraft.server.v1_10_R1.EnumDirection;
@@ -78,7 +79,7 @@ public class BlockBreaking {
 		EntityEnderPearl pearl = new EntityEnderPearl(world);
 		SourceBlock isourceblock = new SourceBlock(dispenserBlock.getWorld(), dispenserBlock.getPosition());
 		IPosition iposition = BlockDispenser.a(isourceblock);
-		EnumDirection enumdirection = BlockDispenser.e(isourceblock.f());
+		EnumDirection enumdirection = isourceblock.e().get(BlockDirectional.FACING);
 		
 		pearl.setPosition(iposition.getX(), iposition.getY(), iposition.getZ());
 		pearl.shoot((double) enumdirection.getAdjacentX(), (double) ((float) enumdirection.getAdjacentY() + 0.1F), (double) enumdirection.getAdjacentZ(), 1.1F, 6.0F);
@@ -136,7 +137,7 @@ public class BlockBreaking {
 		
 		//Silk touch
 		if (tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.SILK_TOUCH) > 0 && isSilkTouchable(block)) {
-			return Arrays.asList(CraftItemStack.asBukkitCopy(silkTouch(block, blockData)));
+			return Collections.singletonList(CraftItemStack.asBukkitCopy(silkTouch(block, blockData)));
 		}
 		
 		int fortuneLevel = tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.LOOT_BONUS_BLOCKS);

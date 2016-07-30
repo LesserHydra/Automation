@@ -10,7 +10,7 @@ import net.minecraft.server.v1_10_R1.Block;
 import net.minecraft.server.v1_10_R1.EnumPistonReaction;
 import net.minecraft.server.v1_10_R1.Material;
 
-public enum NMSMaterial {
+enum NMSMaterial {
 	
 	AIR			(Material.AIR),
 	GRASS		(Material.GRASS),
@@ -46,7 +46,8 @@ public enum NMSMaterial {
 	CAKE		(Material.CAKE),
 	WEB			(Material.WEB),
 	PISTON		(Material.PISTON),
-	BANNER		(Material.BANNER);
+	BANNER		(Material.BANNER),
+	J           (Material.J);
 	
 	private static final Map<EnumPistonReaction, PistonMoveReaction> moveReactionMap =
 			MapBuilder.init(() -> new EnumMap<EnumPistonReaction, PistonMoveReaction>(EnumPistonReaction.class))
