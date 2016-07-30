@@ -4,11 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.craftbukkit.v1_9_R2.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_10_R1.util.CraftMagicNumbers;
 import com.lesserhydra.bukkitutil.SoundEffect;
 import com.lesserhydra.util.MapBuilder;
-import net.minecraft.server.v1_9_R2.Block;
-import net.minecraft.server.v1_9_R2.SoundEffectType;
+import net.minecraft.server.v1_10_R1.Block;
+import net.minecraft.server.v1_10_R1.SoundEffectType;
 
 public enum BlockSoundType {
 	
