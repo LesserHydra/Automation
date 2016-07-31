@@ -281,10 +281,11 @@ public class ActivatorListener implements Listener {
 	/*
 	 * Milks cows and mooshrooms
 	 */
+	@SuppressWarnings("deprecation")
 	private boolean handleMilking(DispenserInteraction interaction) {
 		//Keep from overriding vanilla behavior
-		Material facingType = interaction.getFacingBlock().getType();
-		if (facingType == Material.STATIONARY_WATER || facingType == Material.STATIONARY_LAVA) return false;
+		Block facingBlock = interaction.getFacingBlock();
+		if (facingBlock.isLiquid() && facingBlock.getData() == 0) return false;
 		
 		interaction.validate();
 		
