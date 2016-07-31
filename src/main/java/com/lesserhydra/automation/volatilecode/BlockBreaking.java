@@ -2,30 +2,31 @@ package com.lesserhydra.automation.volatilecode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.stream.Collectors;
 import org.bukkit.block.Dispenser;
-import org.bukkit.craftbukkit.v1_9_R2.CraftChunk;
-import org.bukkit.craftbukkit.v1_9_R2.CraftWorld;
-import org.bukkit.craftbukkit.v1_9_R2.block.CraftDispenser;
-import org.bukkit.craftbukkit.v1_9_R2.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_9_R2.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_10_R1.CraftChunk;
+import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_10_R1.block.CraftDispenser;
+import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_10_R1.util.CraftMagicNumbers;
 import org.bukkit.entity.EnderPearl;
 import org.bukkit.material.Diode;
 import com.lesserhydra.bukkitutil.RedstoneUtil;
-import net.minecraft.server.v1_9_R2.Block;
-import net.minecraft.server.v1_9_R2.BlockDispenser;
-import net.minecraft.server.v1_9_R2.BlockPosition;
-import net.minecraft.server.v1_9_R2.EntityEnderPearl;
-import net.minecraft.server.v1_9_R2.EnumDirection;
-import net.minecraft.server.v1_9_R2.IBlockData;
-import net.minecraft.server.v1_9_R2.IPosition;
-import net.minecraft.server.v1_9_R2.ItemStack;
-import net.minecraft.server.v1_9_R2.NBTTagCompound;
-import net.minecraft.server.v1_9_R2.SourceBlock;
-import net.minecraft.server.v1_9_R2.TileEntityDispenser;
-import net.minecraft.server.v1_9_R2.World;
+import net.minecraft.server.v1_10_R1.Block;
+import net.minecraft.server.v1_10_R1.BlockDispenser;
+import net.minecraft.server.v1_10_R1.BlockDirectional;
+import net.minecraft.server.v1_10_R1.BlockPosition;
+import net.minecraft.server.v1_10_R1.EntityEnderPearl;
+import net.minecraft.server.v1_10_R1.EnumDirection;
+import net.minecraft.server.v1_10_R1.IBlockData;
+import net.minecraft.server.v1_10_R1.IPosition;
+import net.minecraft.server.v1_10_R1.ItemStack;
+import net.minecraft.server.v1_10_R1.NBTTagCompound;
+import net.minecraft.server.v1_10_R1.SourceBlock;
+import net.minecraft.server.v1_10_R1.TileEntityDispenser;
+import net.minecraft.server.v1_10_R1.World;
 
 public class BlockBreaking {
 	
@@ -78,7 +79,7 @@ public class BlockBreaking {
 		EntityEnderPearl pearl = new EntityEnderPearl(world);
 		SourceBlock isourceblock = new SourceBlock(dispenserBlock.getWorld(), dispenserBlock.getPosition());
 		IPosition iposition = BlockDispenser.a(isourceblock);
-		EnumDirection enumdirection = BlockDispenser.e(isourceblock.f());
+		EnumDirection enumdirection = isourceblock.e().get(BlockDirectional.FACING);
 		
 		pearl.setPosition(iposition.getX(), iposition.getY(), iposition.getZ());
 		pearl.shoot((double) enumdirection.getAdjacentX(), (double) ((float) enumdirection.getAdjacentY() + 0.1F), (double) enumdirection.getAdjacentZ(), 1.1F, 6.0F);
@@ -136,7 +137,7 @@ public class BlockBreaking {
 		
 		//Silk touch
 		if (tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.SILK_TOUCH) > 0 && isSilkTouchable(block)) {
-			return Arrays.asList(CraftItemStack.asBukkitCopy(silkTouch(block, blockData)));
+			return Collections.singletonList(CraftItemStack.asBukkitCopy(silkTouch(block, blockData)));
 		}
 		
 		int fortuneLevel = tool.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.LOOT_BONUS_BLOCKS);

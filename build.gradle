@@ -8,7 +8,7 @@ apply plugin: 'eclipse'
 import org.ajoberstar.grgit.*
 import org.apache.tools.ant.filters.ReplaceTokens
 
-version = 'ALPHA'//generateVersion('0.1')
+version = generateVersion('0.1')
 String pluginMain = 'com.lesserhydra.automation.Automation'
 
 repositories {
@@ -20,8 +20,7 @@ repositories {
 }
 
 dependencies {
-  compile 'org.bukkit:bukkit:1.9-R0.1-SNAPSHOT'
-  compile 'org.bukkit:craftbukkit:1.9.4-R0.1-SNAPSHOT'
+  compile 'org.bukkit:craftbukkit:1.10.2-R0.1-SNAPSHOT'
 }
 
 //Generate plugin.yml

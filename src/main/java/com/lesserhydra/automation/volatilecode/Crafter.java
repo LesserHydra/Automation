@@ -6,17 +6,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.bukkit.craftbukkit.v1_9_R2.CraftWorld;
-import org.bukkit.craftbukkit.v1_9_R2.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
 import org.bukkit.inventory.InventoryView;
-import net.minecraft.server.v1_9_R2.Container;
-import net.minecraft.server.v1_9_R2.CraftingManager;
-import net.minecraft.server.v1_9_R2.EntityHuman;
-import net.minecraft.server.v1_9_R2.IRecipe;
-import net.minecraft.server.v1_9_R2.InventoryCraftResult;
-import net.minecraft.server.v1_9_R2.InventoryCrafting;
-import net.minecraft.server.v1_9_R2.ItemStack;
-import net.minecraft.server.v1_9_R2.World;
+import net.minecraft.server.v1_10_R1.Container;
+import net.minecraft.server.v1_10_R1.CraftingManager;
+import net.minecraft.server.v1_10_R1.EntityHuman;
+import net.minecraft.server.v1_10_R1.IRecipe;
+import net.minecraft.server.v1_10_R1.InventoryCraftResult;
+import net.minecraft.server.v1_10_R1.InventoryCrafting;
+import net.minecraft.server.v1_10_R1.ItemStack;
+import net.minecraft.server.v1_10_R1.World;
 
 public class Crafter {
 	
