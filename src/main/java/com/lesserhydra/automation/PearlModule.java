@@ -1,5 +1,7 @@
 package com.lesserhydra.automation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -16,6 +18,7 @@ import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class PearlModule implements Module, Listener {
 	
@@ -76,6 +79,12 @@ public class PearlModule implements Module, Listener {
 	}
 	
 	private ItemStack bindPearl(ItemStack item, OfflinePlayer bound) {
+		ItemMeta meta = item.getItemMeta();
+		List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>(1);
+		lore.removeIf(line -> line.startsWith("§l§dBound to "));
+		lore.add("§l§dBound to " + bound.getName());
+		meta.setLore(lore);
+		item.setItemMeta(meta);
 		return BlockBreaking.setCustomTag(item, BINDING_TAG_KEY, bound.getUniqueId().toString());
 	}
 	
