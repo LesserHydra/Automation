@@ -7,7 +7,7 @@ public class Automation extends JavaPlugin {
 	
 	private static Automation instance;
 	
-	//private final AutocrafterListener autocrafterModule = new AutocrafterListener();
+	private final AutocrafterListener autocrafterModule = new AutocrafterListener(this);
 	private final ActivatorListener activatorListener = new ActivatorListener();
 	private final BlockCartListener blockCartModule = new BlockCartListener();
 	private final PearlModule pearlModule = new PearlModule(this);
@@ -21,13 +21,13 @@ public class Automation extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(new PulserListener(), this);
 		getServer().getPluginManager().registerEvents(activatorListener, this);
 		getServer().getPluginManager().registerEvents(blockCartModule, this);
-		//getServer().getPluginManager().registerEvents(autocrafterModule, this);
+		getServer().getPluginManager().registerEvents(autocrafterModule, this);
 		
 		//TODO: Abstract out into a module system
 		activatorListener.init();
 		blockCartModule.init();
 		pearlModule.init();
-		//autocrafterModule.init();
+		autocrafterModule.init();
 		
 		//TODO: Stop canceled hoppers from checking on next tick
 		//TODO: Need some way to check if a cart is holding a block. Comparator/plate-track combo seems intuitive
