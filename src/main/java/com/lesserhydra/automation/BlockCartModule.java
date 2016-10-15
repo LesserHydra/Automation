@@ -15,6 +15,7 @@ import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
@@ -29,7 +30,7 @@ import com.lesserhydra.bukkitutil.BlockUtil;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.MapBuilder;
 
-class BlockCartListener implements Listener {
+class BlockCartModule implements Module, Listener {
 	
 	private final Map<Material, Class<? extends Minecart>> typeMap =
 			MapBuilder.init(HashMap<Material, Class<? extends Minecart>>::new)
@@ -42,10 +43,20 @@ class BlockCartListener implements Listener {
 			.put(Material.COMMAND, CommandMinecart.class)
 			.buildImmutable();
 	
+	private final Automation plugin;
+	
+	BlockCartModule(Automation plugin) { this.plugin = plugin; }
 	
 	public void init() {
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+		
 		Automation.instance().getActivatorModule().registerHandler(this::handleBlockAdd);
 		Automation.instance().getActivatorModule().registerHandler(Material.SHEARS, this::handleBlockRemove);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
 	}
 	
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -106,7 +117,7 @@ class BlockCartListener implements Listener {
 		Minecart minecart = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
 				.filter(entity -> entity instanceof Minecart)
 				.map(entity -> (Minecart) entity)
-				.filter(BlockCartListener::doesMinecartHaveItem)
+				.filter(BlockCartModule::doesMinecartHaveItem)
 				.findAny().orElse(null);
 		if (minecart == null) return false;
 		

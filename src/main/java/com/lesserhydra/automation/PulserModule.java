@@ -7,6 +7,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.Hopper;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
@@ -15,7 +16,21 @@ import org.bukkit.material.Diode;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 
-class PulserListener implements Listener {
+class PulserModule implements Module, Listener {
+	
+	private final Automation plugin;
+	
+	PulserModule(Automation plugin) { this.plugin = plugin; }
+	
+	@Override
+	public void init() {
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
+	}
 	
 	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onHopperMove(InventoryMoveItemEvent event) {

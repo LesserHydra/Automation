@@ -17,6 +17,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Item;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.inventory.Inventory;
@@ -36,12 +37,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-class AutocrafterListener implements Listener {
+class AutocrafterModule implements Module, Listener {
 	
 	private final Automation plugin;
 	
-	AutocrafterListener(Automation plugin) { this.plugin = plugin; }
+	AutocrafterModule(Automation plugin) { this.plugin = plugin; }
 	
+	@Override
 	public void init() {
 		@SuppressWarnings("deprecation")
 		MaterialData whiteGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.WHITE.getData());
@@ -51,6 +53,12 @@ class AutocrafterListener implements Listener {
 		Bukkit.getServer().addRecipe(new ShapelessRecipe(getBlockerItem()).addIngredient(blackGlassData));
 		
 		plugin.getActivatorModule().registerHandler(this::handleAutocrafting, Priority.OVERRIDE);
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
 	}
 	
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

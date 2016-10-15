@@ -6,11 +6,26 @@ import org.bukkit.block.Hopper;
 import org.bukkit.entity.ItemFrame;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import com.lesserhydra.bukkitutil.BlockUtil;
 
-class HopperFilterListener implements Listener {
+class HopperFilterModule implements Module, Listener {
+	
+	private final Automation plugin;
+	
+	HopperFilterModule(Automation plugin) { this.plugin = plugin; }
+	
+	@Override
+	public void init() {
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
+	}
 	
 	@EventHandler (priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onHopperMove(InventoryMoveItemEvent event) {
