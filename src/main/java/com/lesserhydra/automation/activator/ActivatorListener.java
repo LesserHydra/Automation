@@ -37,6 +37,7 @@ import com.lesserhydra.util.EnumMapPriorityView;
 import com.lesserhydra.util.PriorityView;
 
 //TODO: Add proper unregistering
+//TODO: Allow general handlers to overide specialty, with regards to priority
 public class ActivatorListener implements Listener {
 	
 	private static final Random rand = new Random();
@@ -89,16 +90,16 @@ public class ActivatorListener implements Listener {
 	private boolean handleInteraction(DispenserInteraction interaction) {
 		PriorityView<Priority, InteractionHandler> typeHandlers = typeHandlersMap.get(interaction.getItem().getType());
 		
+		//Check general handlers
+		for (InteractionHandler handler : generalHandlers) {
+			if (handler.handleInteraction(interaction)) return true;
+		}
+		
 		//Check type specific handlers
 		if (typeHandlers != null) {
 			for (InteractionHandler handler : typeHandlers) {
 				if (handler.handleInteraction(interaction)) return true;
 			}
-		}
-		
-		//Check general handlers
-		for (InteractionHandler handler : generalHandlers) {
-			if (handler.handleInteraction(interaction)) return true;
 		}
 		
 		//None succeeded
