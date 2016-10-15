@@ -124,7 +124,7 @@ public class ActivatorListener implements Listener {
 	
 	private void handleAddedItems(Dispenser dispenser, DispenserInteraction interaction) {
 		Map<Integer, ItemStack> remaining = dispenser.getInventory().addItem(interaction.getResults());
-		if (!remaining.isEmpty()) remaining.values().stream()
+		if (!remaining.isEmpty()) remaining.values()
 				.forEach(remainingItem -> interaction.getFacingBlock().getWorld().dropItemNaturally(interaction.getFacingBlock().getLocation().add(0.5, 0.5, 0.5), remainingItem));
 	}
 	

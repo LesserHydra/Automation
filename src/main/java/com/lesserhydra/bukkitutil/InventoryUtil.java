@@ -30,14 +30,11 @@ public class InventoryUtil {
 	public static boolean inventoryHasRoom(Inventory inv, ItemStack item) {
 		int numRemaining = item.getAmount();
 		ItemStack[] contents = inv.getStorageContents();
-		for (int i = 0; i < contents.length; i++) {
-			if (contents[i] == null || contents[i].getType() == Material.AIR) return true;
-			if (contents[i].getType() != item.getType()) continue;
-			ItemStack clonedSlotStack = contents[i].clone();
-			clonedSlotStack.setAmount(item.getAmount());
-			if (!item.equals(clonedSlotStack)) continue;
+		for (ItemStack currentItem : contents) {
+			if (currentItem == null || currentItem.getType() == Material.AIR) return true;
+			if (!item.isSimilar(currentItem)) continue;
 			
-			numRemaining -= contents[i].getMaxStackSize() - contents[i].getAmount();
+			numRemaining -= currentItem.getMaxStackSize() - currentItem.getAmount();
 			if (numRemaining <= 0) return true;
 		}
 		return false;

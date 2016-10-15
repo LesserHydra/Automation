@@ -10,7 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import com.lesserhydra.bukkitutil.BlockUtil;
 
-public class HopperFilterListener implements Listener {
+class HopperFilterListener implements Listener {
 	
 	@EventHandler (priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onHopperMove(InventoryMoveItemEvent event) {

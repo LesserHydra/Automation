@@ -41,13 +41,9 @@ public class Automation extends JavaPlugin {
 		instance = null;
 	}
 	
-	public ActivatorListener getActivatorModule() {
-		return activatorListener;
-	}
+	public ActivatorListener getActivatorModule() { return activatorListener; }
 	
-	public static Automation instance() {
-		return instance;
-	}
+	public static Automation instance() { return instance; }
 	
 	public static void log(String msg) {
 		instance.getLogger().info(msg);

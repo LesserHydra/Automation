@@ -15,9 +15,7 @@ import org.bukkit.material.Diode;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 
-public class PulserListener implements Listener {
-	
-	//private final Map<Location, BukkitTask> resetTimers = new HashMap<>();
+class PulserListener implements Listener {
 	
 	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onHopperMove(InventoryMoveItemEvent event) {
@@ -30,22 +28,10 @@ public class PulserListener implements Listener {
 	}
 	
 	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onBrewingFinish(BrewEvent event) {
-		pulse(event.getBlock());
-	}
+	public void onBrewingFinish(BrewEvent event) { pulse(event.getBlock()); }
 	
 	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onFurnaceSmelt(FurnaceSmeltEvent event) {
-		pulse(event.getBlock());
-	}
-	
-	/*@EventHandler (priority = EventPriority.NORMAL, ignoreCancelled = true)
-	public void cancelPrematurePowerLoss(BlockRedstoneEvent event) {
-		if (event.getBlock().getType() != Material.DIODE_BLOCK_ON) return;
-		if (event.getOldCurrent() != 15) return;
-		
-		if (resetTimers.containsKey(event.getBlock().getLocation())) event.setNewCurrent(15);
-	}*/
+	public void onFurnaceSmelt(FurnaceSmeltEvent event) { pulse(event.getBlock()); }
 	
 	private void pulse(Block pulserBlock) {
 		Stream.of(BlockFace.EAST, BlockFace.WEST, BlockFace.NORTH, BlockFace.SOUTH)
@@ -54,18 +40,5 @@ public class PulserListener implements Listener {
 				.filter(sideBlock -> pulserBlock.getRelative(((Diode) sideBlock.getState().getData()).getFacing()).equals(sideBlock))
 				.forEach(BlockBreaking::activateRepeater);
 	}
-	
-	/*private void activateDiode(Block block) {
-		BukkitTask resetTimer = resetTimers.get(block.getLocation());
-		if (resetTimer != null) resetTimer.cancel();
-		else BlockBreaking.activateRepeater(block);
-		
-		resetTimer = Bukkit.getScheduler().runTaskLater(Automation.instance(), () -> {
-				resetTimers.remove(block.getLocation());
-				//BlockBreaking.deactivateRepeater(block); //TODO: See if redstone update can be sent instead
-				BlockBreaking.redstoneUpdate(block);
-			}, ((Diode) block.getState().getData()).getDelay() * 2 + 1);
-		resetTimers.put(block.getLocation(), resetTimer);
-	}*/
 	
 }

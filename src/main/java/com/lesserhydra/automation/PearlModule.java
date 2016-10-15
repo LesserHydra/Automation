@@ -20,7 +20,7 @@ import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
 import org.bukkit.inventory.meta.ItemMeta;
 
-public class PearlModule implements Module, Listener {
+class PearlModule implements Module, Listener {
 	
 	private static final String BINDING_TAG_KEY = "EnderpearlBoundPlayer";
 	
@@ -59,7 +59,7 @@ public class PearlModule implements Module, Listener {
 		event.getItem().setItemStack(newItem);
 	}
 	
-	public boolean handlePearlThrow(DispenserInteraction interaction) {
+	private boolean handlePearlThrow(DispenserInteraction interaction) {
 		interaction.validate();
 		interaction.setKeepItem(false);
 		

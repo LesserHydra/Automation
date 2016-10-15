@@ -3,6 +3,7 @@ package com.lesserhydra.automation;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.activator.Priority;
 import com.lesserhydra.automation.volatilecode.Crafter;
+import com.lesserhydra.bukkitutil.BlockUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -72,7 +73,7 @@ class AutocrafterListener implements Listener {
 		Bukkit.getScheduler().runTaskLater(Automation.instance(), moveTask, 0L);
 	}
 	
-	public boolean handleAutocrafting(DispenserInteraction interaction) {
+	private boolean handleAutocrafting(DispenserInteraction interaction) {
 		if (!isAutocrafter(interaction.getDispenser())) return false;
 		interaction.validate();
 		interaction.setKeepItem(true);
@@ -148,29 +149,13 @@ class AutocrafterListener implements Listener {
 	}
 	
 	private boolean isAutocrafter(Dispenser dispenser) {
-		//Must be facing up or down
 		BlockFace facing = ((Directional)dispenser.getData()).getFacing();
-		if (facing != BlockFace.DOWN && facing != BlockFace.UP) return false;
-		
-		//Must have a slab on face side
 		Block slab = dispenser.getBlock().getRelative(facing);
-		if (!isHalfSlab(slab)) return false;
 		
-		//Slab must be directly on dispenser
-		if (getHalfSlabFace(slab) != facing.getOppositeFace()) return false;
-		
-		return true;
-	}
-	
-	private boolean isHalfSlab(Block block) {
-		Material blockMat = block.getType();
-		return (blockMat == Material.STEP || blockMat == Material.WOOD_STEP
-				|| blockMat == Material.STONE_SLAB2 || blockMat == Material.PURPUR_SLAB);
-	}
-	
-	@SuppressWarnings("deprecation")
-	private BlockFace getHalfSlabFace(Block slab) {
-		return (slab.getData() < 8 ? BlockFace.DOWN : BlockFace.UP);
+		//Dispenser must be up or down, and be facing into a directly adjacent half slab
+		return facing != BlockFace.DOWN && facing != BlockFace.UP
+				&& BlockUtil.isHalfSlab(slab)
+				&& BlockUtil.getHalfSlabFace(slab) == facing.getOppositeFace();
 	}
 	
 	private ItemStack getFillerItem() {
