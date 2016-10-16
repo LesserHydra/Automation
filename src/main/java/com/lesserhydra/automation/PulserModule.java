@@ -1,6 +1,8 @@
 package com.lesserhydra.automation;
 
 import java.util.stream.Stream;
+
+import com.lesserhydra.automation.volatilecode.NMSRedstone;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -13,7 +15,6 @@ import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.material.Diode;
-import com.lesserhydra.automation.volatilecode.BlockBreaking;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 
 class PulserModule implements Module, Listener {
@@ -53,7 +54,7 @@ class PulserModule implements Module, Listener {
 				.map(pulserBlock::getRelative)
 				.filter(sideBlock -> sideBlock.getType() == Material.DIODE_BLOCK_OFF || sideBlock.getType() == Material.DIODE_BLOCK_ON)
 				.filter(sideBlock -> pulserBlock.getRelative(((Diode) sideBlock.getState().getData()).getFacing()).equals(sideBlock))
-				.forEach(BlockBreaking::activateRepeater);
+				.forEach(NMSRedstone::activateRepeater);
 	}
 	
 }
