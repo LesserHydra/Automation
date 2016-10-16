@@ -15,6 +15,7 @@ import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.entity.minecart.StorageMinecart;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
@@ -29,7 +30,7 @@ import com.lesserhydra.bukkitutil.BlockUtil;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.MapBuilder;
 
-public class BlockCartListener implements Listener {
+class BlockCartModule implements Module, Listener {
 	
 	private final Map<Material, Class<? extends Minecart>> typeMap =
 			MapBuilder.init(HashMap<Material, Class<? extends Minecart>>::new)
@@ -42,10 +43,20 @@ public class BlockCartListener implements Listener {
 			.put(Material.COMMAND, CommandMinecart.class)
 			.buildImmutable();
 	
+	private final Automation plugin;
+	
+	BlockCartModule(Automation plugin) { this.plugin = plugin; }
 	
 	public void init() {
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+		
 		Automation.instance().getActivatorModule().registerHandler(this::handleBlockAdd);
 		Automation.instance().getActivatorModule().registerHandler(Material.SHEARS, this::handleBlockRemove);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
 	}
 	
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -75,7 +86,7 @@ public class BlockCartListener implements Listener {
 	}
 	
 	//TODO: Move to a single function for interacting with minecarts?
-	public boolean handleBlockAdd(DispenserInteraction dispInteraction) {
+	private boolean handleBlockAdd(DispenserInteraction dispInteraction) {
 		//Find facing minecart
 		Minecart minecart = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
 				.filter(entity -> entity instanceof Minecart)
@@ -95,18 +106,18 @@ public class BlockCartListener implements Listener {
 		//Success
 		dispInteraction.validate();
 		dispInteraction.setKeepItem(interaction.isItemUsed());
-		if (interaction.hasResult()) dispInteraction.setResults(new ItemStack[]{interaction.getResult()});
+		if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
 		return true;
 	}
 	
-	public boolean handleBlockRemove(DispenserInteraction dispInteraction) {
+	private boolean handleBlockRemove(DispenserInteraction dispInteraction) {
 		dispInteraction.validate();
 		
 		//Find facing minecart
 		Minecart minecart = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
 				.filter(entity -> entity instanceof Minecart)
 				.map(entity -> (Minecart) entity)
-				.filter(cart -> doesMinecartHaveItem(cart))
+				.filter(BlockCartModule::doesMinecartHaveItem)
 				.findAny().orElse(null);
 		if (minecart == null) return false;
 		
@@ -119,7 +130,7 @@ public class BlockCartListener implements Listener {
 		
 		//Success
 		dispInteraction.setDamageItem(true);
-		if (interaction.hasResult()) dispInteraction.setResults(new ItemStack[]{interaction.getResult()});
+		if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
 		return true;
 	}
 	
@@ -211,8 +222,8 @@ public class BlockCartListener implements Listener {
 	}
 	
 	public static boolean doesMinecartHaveItem(Minecart minecart) {
-		if (minecart.getType() != EntityType.MINECART) return true;
-		return (minecart.getDisplayBlock().getItemType() != Material.AIR);
+		return minecart.getType() != EntityType.MINECART
+				|| minecart.getDisplayBlock().getItemType() != Material.AIR;
 	}
 	
 	public static <T extends Minecart> T changeMinecart(Minecart minecart, Class<T> clazz) {

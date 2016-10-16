@@ -3,6 +3,8 @@ package com.lesserhydra.automation.activator;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
+
+import com.lesserhydra.automation.Module;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
@@ -20,6 +22,7 @@ import org.bukkit.entity.MushroomCow;
 import org.bukkit.entity.Sheep;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.inventory.ItemStack;
@@ -38,15 +41,20 @@ import com.lesserhydra.util.PriorityView;
 
 //TODO: Add proper unregistering
 //TODO: Allow general handlers to overide specialty, with regards to priority
-public class ActivatorListener implements Listener {
+public class ActivatorModule implements Module, Listener {
 	
 	private static final Random rand = new Random();
 	
 	private final Map<Material, PriorityView<Priority, InteractionHandler>> typeHandlersMap = new EnumMap<>(Material.class);
 	private final PriorityView<Priority, InteractionHandler> generalHandlers = new EnumMapPriorityView<>(Priority.class);
 	
+	private final Automation plugin;
+	
+	public ActivatorModule(Automation plugin) { this.plugin = plugin; }
 	
 	public void init() {
+		plugin.getServer().getPluginManager().registerEvents(this, plugin);
+		
 		registerHandler(this::handleBlockPlacing, Priority.LAST);
 		registerHandler(Material.WOOD_PICKAXE, this::handleBlockBreaking);
 		registerHandler(Material.STONE_PICKAXE, this::handleBlockBreaking);
@@ -62,6 +70,11 @@ public class ActivatorListener implements Listener {
 		
 		registerHandler(this::handleItemFramePlacing);
 		registerHandler(Material.SHEARS, this::handleItemFrameRemoving);
+	}
+	
+	@Override
+	public void deinit() {
+		HandlerList.unregisterAll(this);
 	}
 	
 	@EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -124,7 +137,7 @@ public class ActivatorListener implements Listener {
 	
 	private void handleAddedItems(Dispenser dispenser, DispenserInteraction interaction) {
 		Map<Integer, ItemStack> remaining = dispenser.getInventory().addItem(interaction.getResults());
-		if (!remaining.isEmpty()) remaining.values().stream()
+		if (!remaining.isEmpty()) remaining.values()
 				.forEach(remainingItem -> interaction.getFacingBlock().getWorld().dropItemNaturally(interaction.getFacingBlock().getLocation().add(0.5, 0.5, 0.5), remainingItem));
 	}
 	

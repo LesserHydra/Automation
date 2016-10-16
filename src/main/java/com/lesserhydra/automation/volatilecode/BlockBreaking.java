@@ -1,22 +1,8 @@
 package com.lesserhydra.automation.volatilecode;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.stream.Collectors;
-import org.bukkit.block.Dispenser;
-import org.bukkit.craftbukkit.v1_10_R1.CraftChunk;
-import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_10_R1.block.CraftDispenser;
-import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_10_R1.util.CraftMagicNumbers;
-import org.bukkit.entity.EnderPearl;
-import org.bukkit.material.Diode;
-import com.lesserhydra.bukkitutil.RedstoneUtil;
 import net.minecraft.server.v1_10_R1.Block;
-import net.minecraft.server.v1_10_R1.BlockDispenser;
 import net.minecraft.server.v1_10_R1.BlockDirectional;
+import net.minecraft.server.v1_10_R1.BlockDispenser;
 import net.minecraft.server.v1_10_R1.BlockPosition;
 import net.minecraft.server.v1_10_R1.EntityEnderPearl;
 import net.minecraft.server.v1_10_R1.EnumDirection;
@@ -27,6 +13,19 @@ import net.minecraft.server.v1_10_R1.NBTTagCompound;
 import net.minecraft.server.v1_10_R1.SourceBlock;
 import net.minecraft.server.v1_10_R1.TileEntityDispenser;
 import net.minecraft.server.v1_10_R1.World;
+import org.bukkit.block.Dispenser;
+import org.bukkit.craftbukkit.v1_10_R1.CraftChunk;
+import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_10_R1.block.CraftDispenser;
+import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_10_R1.util.CraftMagicNumbers;
+import org.bukkit.entity.EnderPearl;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class BlockBreaking {
 	
@@ -86,28 +85,6 @@ public class BlockBreaking {
 		world.addEntity(pearl);
 		
 		return (EnderPearl) pearl.getBukkitEntity();
-	}
-	
-	public static void activateRepeater(org.bukkit.block.Block diodeBlock) {
-		if (RedstoneUtil.diodeIsLocked(diodeBlock)) return;
-		
-		org.bukkit.material.Diode diode = (Diode) diodeBlock.getState().getData();
-		Block block = CraftMagicNumbers.getBlock(diodeBlock.getType());
-		World world = ((CraftWorld)diodeBlock.getWorld()).getHandle();
-		BlockPosition blockposition = new BlockPosition(diodeBlock.getX(), diodeBlock.getY(), diodeBlock.getZ());
-		
-		world.a(blockposition, block, diode.getDelay() * 2, -1); //OBF: Update diode state
-	}
-	
-	@SuppressWarnings("deprecation")
-	public static void redstoneUpdate(org.bukkit.block.Block diodeBlock) {
-		Block block = CraftMagicNumbers.getBlock(diodeBlock.getType());
-		World world = ((CraftWorld)diodeBlock.getWorld()).getHandle();
-		BlockPosition blockposition = new BlockPosition(diodeBlock.getX(), diodeBlock.getY(), diodeBlock.getZ());
-		IBlockData blockData = ((CraftChunk)diodeBlock.getChunk()).getHandle().getBlockData(blockposition);
-		
-		block.a(blockData, world, blockposition, block); //OBF: Redstone update
-		//world.update(blockposition, block);
 	}
 	
 	@SuppressWarnings("deprecation")
