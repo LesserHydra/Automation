@@ -9,6 +9,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -105,8 +106,16 @@ class AutocrafterModule implements Module, Listener {
 		//Do crafting
 		List<ItemStack> results = Crafter.craft(craftingContents, dispenser.getWorld());
 		
+		//Handle success
+		if (!results.isEmpty()) {
+			dispenser.getInventory().removeItem(craftingContents);
+			dispenser.getWorld().playSound(dispenser.getLocation(), Sound.BLOCK_PISTON_EXTEND, 0.8F, 2F);
+			
+			Location partLoc = interaction.getFacingBlock().getLocation().add(0.5, 0.5, 0.5);
+			dispenser.getWorld().spawnParticle(Particle.CLOUD, partLoc, 20, 0.2, 0.1, 0.2, 0.05);
+		}
+		
 		//Drop result and remaining items
-		if (!results.isEmpty()) dispenser.getInventory().removeItem(craftingContents);
 		dispenser.getInventory().removeItem(remainingContents);
 		Collection<ItemStack> toDrop = new LinkedList<>();
 		//toDrop.addAll(Arrays.asList(fillerItems));
@@ -131,8 +140,6 @@ class AutocrafterModule implements Module, Listener {
 			//itemEntity.setVelocity(event.getVelocity()); //TODO: Random velocity
 		}
 		
-		//Effects
-		dispenser.getWorld().playSound(dispenser.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.2F, 2.0F);
 		
 		//Clear dispenser
 		dispenser.getInventory().clear();
@@ -161,7 +168,7 @@ class AutocrafterModule implements Module, Listener {
 		Block slab = dispenser.getBlock().getRelative(facing);
 		
 		//Dispenser must be up or down, and be facing into a directly adjacent half slab
-		return facing != BlockFace.DOWN && facing != BlockFace.UP
+		return (facing == BlockFace.DOWN || facing == BlockFace.UP)
 				&& BlockUtil.isHalfSlab(slab)
 				&& BlockUtil.getHalfSlabFace(slab) == facing.getOppositeFace();
 	}
@@ -195,14 +202,14 @@ class AutocrafterModule implements Module, Listener {
 	@SuppressWarnings("deprecation")
 	private boolean itemIsFiller(ItemStack item) {
 		return item.getType() == Material.STAINED_GLASS_PANE
-				&& item.getDurability() != DyeColor.WHITE.getData()
+				&& item.getDurability() == DyeColor.WHITE.getData()
 				&& item.getEnchantmentLevel(Enchantment.ARROW_DAMAGE) > 0;
 	}
 	
 	@SuppressWarnings("deprecation")
 	private boolean itemIsBlocker(ItemStack item) {
 		return item.getType() == Material.STAINED_GLASS_PANE
-				&& item.getDurability() != DyeColor.BLACK.getData()
+				&& item.getDurability() == DyeColor.BLACK.getData()
 				&& item.getEnchantmentLevel(Enchantment.ARROW_DAMAGE) > 0;
 	}
 	
