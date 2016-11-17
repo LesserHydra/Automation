@@ -1,16 +1,20 @@
 package com.lesserhydra.automation.activator;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import com.lesserhydra.automation.Module;
+import com.lesserhydra.util.MapBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.TreeSpecies;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
@@ -26,10 +30,12 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.material.CocoaPlant;
 import org.bukkit.material.Directional;
 import org.bukkit.material.Dye;
 import org.bukkit.material.MaterialData;
 import org.bukkit.material.Tree;
+import org.bukkit.material.Wood;
 import org.bukkit.material.Wool;
 import com.lesserhydra.automation.Automation;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
@@ -70,6 +76,15 @@ public class ActivatorModule implements Module, Listener {
 		
 		registerHandler(this::handleItemFramePlacing);
 		registerHandler(Material.SHEARS, this::handleItemFrameRemoving);
+		
+		registerHandler(Material.SEEDS, this::handleSeedPlanting);
+		registerHandler(Material.BEETROOT_SEEDS, this::handleSeedPlanting);
+		registerHandler(Material.PUMPKIN_SEEDS, this::handleSeedPlanting);
+		registerHandler(Material.MELON_SEEDS, this::handleSeedPlanting);
+		registerHandler(Material.POTATO_ITEM, this::handleSeedPlanting);
+		registerHandler(Material.CARROT_ITEM, this::handleSeedPlanting);
+		registerHandler(Material.NETHER_STALK, this::handleNetherwartPlanting);
+		registerHandler(Material.INK_SACK, this::handleCocoaPlanting);
 	}
 	
 	@Override
@@ -257,13 +272,9 @@ public class ActivatorModule implements Module, Listener {
 		cow.setHealth(mushCow.getHealth());
 		cow.setCustomName(mushCow.getCustomName());
 		
-		//Five red mushrooms
-		ItemStack resultItems = new ItemStack(Material.RED_MUSHROOM);
-		resultItems.setAmount(5);
-		
 		//Results
 		interaction.setDamageItem(true);
-		interaction.setResults(resultItems);
+		interaction.setResults(new ItemStack(Material.RED_MUSHROOM, 5)); //Five red mushrooms
 		return true;
 	}
 	
@@ -393,8 +404,90 @@ public class ActivatorModule implements Module, Listener {
 		interaction.setDamageItem(true);
 		return true;
 	}
+	
+	/*
+	 * Plants seeds
+	 */
+	private boolean handleSeedPlanting(DispenserInteraction interaction) {
+		interaction.validate();
+		
+		if (interaction.getFacingBlock().getType() != Material.AIR) return false;
+		
+		Block farmland = interaction.getFacingBlock().getRelative(BlockFace.DOWN);
+		if (farmland.getType() != Material.SOIL) return false;
+		
+		interaction.getFacingBlock().setType(getPlantBlockFromSeeds(interaction.getItem().getType()));
+		
+		interaction.setKeepItem(false);
+		return true;
+	}
+	
+	/*
+	 * Plants netherwart
+	 */
+	private boolean handleNetherwartPlanting(DispenserInteraction interaction) {
+		interaction.validate();
+		
+		if (interaction.getFacingBlock().getType() != Material.AIR) return false;
+		
+		Block farmland = interaction.getFacingBlock().getRelative(BlockFace.DOWN);
+		if (farmland.getType() != Material.SOUL_SAND) return false;
+		
+		interaction.getFacingBlock().setType(Material.NETHER_WARTS);
+		
+		interaction.setKeepItem(false);
+		return true;
+	}
+	
+	/*
+	 * Plants cocoa pods
+	 */
+	private boolean handleCocoaPlanting(DispenserInteraction interaction) {
+		if (!interaction.getItem().getData().equals(new Dye(DyeColor.BROWN))) return false;
+		interaction.validate();
+		
+		if (interaction.getFacingBlock().getType() != Material.AIR) return false;
+		
+		BlockFace logFace = getValidCocoaTree(interaction.getFacingBlock(), interaction.getFacing());
+		if (logFace == null) return false;
+		
+		BlockState plantBlockState = interaction.getFacingBlock().getState();
+		plantBlockState.setType(Material.COCOA);
+		plantBlockState.setData(new CocoaPlant(CocoaPlant.CocoaPlantSize.SMALL, logFace));
+		plantBlockState.update(true);
+		
+		interaction.setKeepItem(false);
+		return true;
+	}
+	
 	/*----------------------------------------*/
 	
+	
+	private final Map<Material, Material> seedMap = MapBuilder.init(HashMap<Material, Material>::new)
+			.put(Material.SEEDS, Material.CROPS)
+			.put(Material.POTATO_ITEM, Material.POTATO)
+			.put(Material.CARROT_ITEM, Material.CARROT)
+			.put(Material.BEETROOT_SEEDS, Material.BEETROOT_BLOCK)
+			.put(Material.MELON_SEEDS, Material.MELON_STEM)
+			.put(Material.PUMPKIN_SEEDS, Material.PUMPKIN_STEM)
+			.buildImmutable();
+	private Material getPlantBlockFromSeeds(Material seedMaterial) {
+		return seedMap.get(seedMaterial);
+	}
+	
+	private BlockFace getValidCocoaTree(Block plantingBlock, BlockFace preferred) {
+		if (preferred != BlockFace.UP && preferred != BlockFace.DOWN
+				&& isJungleLog(plantingBlock.getRelative(preferred))) return preferred;
+		return Stream.of(BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST)
+				.filter(dir -> isJungleLog(plantingBlock.getRelative(dir)))
+				.findAny()
+				.orElse(null);
+	}
+	
+	private boolean isJungleLog(Block block) {
+		return block.getType() == Material.LOG
+				&& ((Wood) block.getState().getData()).getSpecies() == TreeSpecies.JUNGLE;
+	}
 	
 	private void placeBlock(Block block, ItemStack blockItem, BlockFace facing) {
 		//Play sound
@@ -412,9 +505,8 @@ public class ActivatorModule implements Module, Listener {
 	}
 	
 	private boolean canBreakBlock(Block block, ItemStack tool) {
-		if (BlockBreaking.isUnbreakable(block)) return false;
-		if (!BlockUtil.blockCanBeBrokenByTool(block, tool)) return false;
-		return true;
+		return !BlockBreaking.isUnbreakable(block)
+				&& BlockUtil.blockCanBeBrokenByTool(block, tool);
 	}
 	
 	private ItemStack[] breakBlock(Block block, ItemStack tool) {
