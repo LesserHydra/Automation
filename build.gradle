@@ -3,7 +3,6 @@ plugins {
 }
 
 apply plugin: 'java'
-apply plugin: 'eclipse'
 
 import org.ajoberstar.grgit.*
 import org.apache.tools.ant.filters.ReplaceTokens
@@ -20,7 +19,7 @@ repositories {
 }
 
 dependencies {
-  compile 'org.bukkit:craftbukkit:1.10.2-R0.1-SNAPSHOT'
+  compile 'org.bukkit:craftbukkit:1.11.2-R0.1-SNAPSHOT'
 }
 
 //Generate plugin.yml
@@ -33,8 +32,8 @@ processResources {
   ])
 }
 
-String generateVersion(workingVersion) {
-  Grgit repo = Grgit.open(project.file('.'))
+static String generateVersion(workingVersion) {
+  Grgit repo = Grgit.open()
   Tag currentTag = repo.tag.list().find {it.commit == repo.head()}
 
   if (currentTag == null) return workingVersion + '-SNAPSHOT'
