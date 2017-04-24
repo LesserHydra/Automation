@@ -1,27 +1,37 @@
 package com.lesserhydra.automation;
 
+import org.bukkit.entity.Minecart;
 import org.bukkit.inventory.ItemStack;
 
 public class BlockCartInteraction {
 	
-	public enum Action {ADD, REMOVE}
+	public enum Action {ADD, REMOVE, INTERACT}
 	
 	private final Action action;
 	private final ItemStack item;
 	
-	private ItemStack result;
-	private boolean itemUsed;
-	private boolean success;
+	private Minecart minecart;
+	private boolean changed = false;
+	
+	private ItemStack result = null;
+	private boolean itemUsed = false;
+	private boolean success = false;
 	
 	
-	public BlockCartInteraction(ItemStack item, Action action) {
+	public BlockCartInteraction(Minecart minecart, ItemStack item, Action action) {
+		this.minecart = minecart;
 		this.action = action;
 		this.item = item.clone();
-		
-		this.result = null;
-		this.itemUsed = false;
-		this.success = false;
 	}
+	
+	public Minecart getMinecart() { return minecart; }
+	
+	public void setMinecart(Minecart minecart) {
+		this.minecart = minecart;
+		changed = true;
+	}
+	
+	public boolean wasMinecartChanged() { return changed; }
 	
 	public Action getAction() {
 		return action;
