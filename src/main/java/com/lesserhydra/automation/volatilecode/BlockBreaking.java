@@ -1,24 +1,25 @@
 package com.lesserhydra.automation.volatilecode;
 
-import net.minecraft.server.v1_10_R1.Block;
-import net.minecraft.server.v1_10_R1.BlockDirectional;
-import net.minecraft.server.v1_10_R1.BlockDispenser;
-import net.minecraft.server.v1_10_R1.BlockPosition;
-import net.minecraft.server.v1_10_R1.EntityEnderPearl;
-import net.minecraft.server.v1_10_R1.EnumDirection;
-import net.minecraft.server.v1_10_R1.IBlockData;
-import net.minecraft.server.v1_10_R1.IPosition;
-import net.minecraft.server.v1_10_R1.ItemStack;
-import net.minecraft.server.v1_10_R1.NBTTagCompound;
-import net.minecraft.server.v1_10_R1.SourceBlock;
-import net.minecraft.server.v1_10_R1.TileEntityDispenser;
-import net.minecraft.server.v1_10_R1.World;
+import net.minecraft.server.v1_11_R1.Block;
+import net.minecraft.server.v1_11_R1.BlockDirectional;
+import net.minecraft.server.v1_11_R1.BlockDispenser;
+import net.minecraft.server.v1_11_R1.BlockPosition;
+import net.minecraft.server.v1_11_R1.EntityEnderPearl;
+import net.minecraft.server.v1_11_R1.EnumDirection;
+import net.minecraft.server.v1_11_R1.IBlockData;
+import net.minecraft.server.v1_11_R1.IPosition;
+import net.minecraft.server.v1_11_R1.Item;
+import net.minecraft.server.v1_11_R1.ItemStack;
+import net.minecraft.server.v1_11_R1.NBTTagCompound;
+import net.minecraft.server.v1_11_R1.SourceBlock;
+import net.minecraft.server.v1_11_R1.TileEntityDispenser;
+import net.minecraft.server.v1_11_R1.World;
 import org.bukkit.block.Dispenser;
-import org.bukkit.craftbukkit.v1_10_R1.CraftChunk;
-import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_10_R1.block.CraftDispenser;
-import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
-import org.bukkit.craftbukkit.v1_10_R1.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_11_R1.CraftChunk;
+import org.bukkit.craftbukkit.v1_11_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_11_R1.block.CraftDispenser;
+import org.bukkit.craftbukkit.v1_11_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_11_R1.util.CraftMagicNumbers;
 import org.bukkit.entity.EnderPearl;
 
 import java.lang.reflect.InvocationTargetException;
@@ -29,16 +30,12 @@ import java.util.stream.Collectors;
 
 public class BlockBreaking {
 	
-	private static Method BLOCK_SILKTOUCHABLE;
 	private static Method BLOCK_GET_SILKTOUCH;
 	
 	static {
 		try {
-			//OBF: isSilktouchable()
-			BLOCK_SILKTOUCHABLE = Block.class.getDeclaredMethod("o");
-			BLOCK_SILKTOUCHABLE.setAccessible(true);
-			//OBF: getSilktouch(IBlockData)
-			BLOCK_GET_SILKTOUCH = Block.class.getDeclaredMethod("u", IBlockData.class);
+			//OBF: getSilktouch(IBlockData) Line 692, gets block as silktouched item
+			BLOCK_GET_SILKTOUCH = Block.class.getDeclaredMethod("w", IBlockData.class);
 			BLOCK_GET_SILKTOUCH.setAccessible(true);
 		} catch (NoSuchMethodException e) {
 			e.printStackTrace();
@@ -77,7 +74,7 @@ public class BlockBreaking {
 		World world = dispenserBlock.getWorld();
 		EntityEnderPearl pearl = new EntityEnderPearl(world);
 		SourceBlock isourceblock = new SourceBlock(dispenserBlock.getWorld(), dispenserBlock.getPosition());
-		IPosition iposition = BlockDispenser.a(isourceblock);
+		IPosition iposition = BlockDispenser.a(isourceblock); //OBF: Line 186, gets position in front of dispenser
 		EnumDirection enumdirection = isourceblock.e().get(BlockDirectional.FACING);
 		
 		pearl.setPosition(iposition.getX(), iposition.getY(), iposition.getZ());
@@ -94,7 +91,7 @@ public class BlockBreaking {
 		World world = ((CraftWorld)bukkitBlock.getWorld()).getHandle();
 		BlockPosition blockPos = new BlockPosition(bukkitBlock.getX(), bukkitBlock.getY(), bukkitBlock.getZ());
 		
-		return (block.b(blockData, world, blockPos) < 0); //OBF: Line 225, checks block strength (set to -1 if unbreakable)
+		return (block.a(blockData, world, blockPos) < 0); //OBF: Line 455, checks block strength (set to -1 if unbreakable)
 	}
 	
 	@SuppressWarnings("deprecation")
@@ -104,7 +101,7 @@ public class BlockBreaking {
 		World world = ((CraftWorld)bukkitBlock.getWorld()).getHandle();
 		BlockPosition blockPos = new BlockPosition(bukkitBlock.getX(), bukkitBlock.getY(), bukkitBlock.getZ());
 		
-		return (block.b(blockData, world, blockPos) == 0); //OBF: Line 225, checks block strength
+		return (block.a(blockData, world, blockPos) == 0); //OBF: Line 455, checks block strength
 	}
 	
 	public static Collection<org.bukkit.inventory.ItemStack> getDrops(org.bukkit.block.Block bukkitBlock, org.bukkit.inventory.ItemStack tool) {
@@ -122,21 +119,25 @@ public class BlockBreaking {
 		block.dropNaturally(world, new BlockPosition(bukkitBlock.getX(), bukkitBlock.getY(), bukkitBlock.getZ()), blockData, 1.0F, fortuneLevel);
 		Collection<org.bukkit.entity.Entity> after = bukkitBlock.getWorld().getNearbyEntities(bukkitBlock.getLocation().add(0.5, 0.5, 0.5), 0.5, 0.5, 0.5);
 		after.removeAll(before);
-		after.forEach(org.bukkit.entity.Entity::remove);
-		return after.stream()
+		
+		//Get itemstacks
+		Collection<org.bukkit.inventory.ItemStack> results = after.stream()
 				.filter(entity -> entity instanceof org.bukkit.entity.Item)
 				.map(itemEntity -> ((org.bukkit.entity.Item)itemEntity).getItemStack())
 				.collect(Collectors.toList());
+		
+		//Remove items
+		//DEBUG
+		after.stream()
+				.filter(entity -> entity instanceof org.bukkit.entity.Item)
+				.forEach(org.bukkit.entity.Entity::remove);
+		
+		return results;
 	}
 
 	private static boolean isSilkTouchable(Block block) {
-		try {
-			return (boolean) BLOCK_SILKTOUCHABLE.invoke(block);
-		}
-		catch (IllegalAccessException | InvocationTargetException e) {
-			e.printStackTrace();
-			return false;
-		}
+		//OBF: isSilktouchable() Line 732, checks if block can be silktouched (false for spawners and the like)
+		return block.o();
 	}
 
 	private static ItemStack silkTouch(Block block, IBlockData data) {
@@ -145,7 +146,7 @@ public class BlockBreaking {
 		}
 		catch (IllegalAccessException | InvocationTargetException e) {
 			e.printStackTrace();
-			return null;
+			return new ItemStack((Item)null);
 		}
 	}
 	

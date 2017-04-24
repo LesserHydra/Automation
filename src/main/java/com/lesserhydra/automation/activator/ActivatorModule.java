@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 
 import com.lesserhydra.automation.Module;
 import com.lesserhydra.util.MapBuilder;
+import org.apache.commons.lang.ArrayUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
@@ -19,6 +20,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Dispenser;
+import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.Cow;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.ItemFrame;
@@ -30,6 +32,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.material.CocoaPlant;
 import org.bukkit.material.Directional;
 import org.bukkit.material.Dye;
@@ -191,11 +194,22 @@ public class ActivatorModule implements Module, Listener {
 	
 	/*---------------Interaction Handlers---------------*/
 	
+	private static final Map<Material, Material> itemMaterialMappings =
+			MapBuilder.init(HashMap<Material, Material>::new)
+					.put(Material.CAKE, Material.CAKE_BLOCK)
+					.buildImmutable();
+	
 	/*
 	 * Places any block item as long as space in front it air
 	 */
 	private boolean handleBlockPlacing(DispenserInteraction interaction) {
-		if (!interaction.getItem().getType().isBlock()) return false;
+		Material itemType = interaction.getItem().getType();
+		if (!itemType.isBlock() && !itemMaterialMappings.containsKey(itemType)) return false;
+		
+		//Skip items with block meta
+		if (interaction.getItem().getItemMeta() instanceof BlockStateMeta
+				&& ((BlockStateMeta)interaction.getItem().getItemMeta()).hasBlockState()) return false;
+		
 		interaction.validate();
 		if (interaction.getFacingBlock().getType() != Material.AIR) return false;
 		
@@ -401,7 +415,6 @@ public class ActivatorModule implements Module, Listener {
 		
 		//Results
 		interaction.setResults(frameItem);
-		interaction.setDamageItem(true);
 		return true;
 	}
 	
@@ -490,17 +503,22 @@ public class ActivatorModule implements Module, Listener {
 	}
 	
 	private void placeBlock(Block block, ItemStack blockItem, BlockFace facing) {
+		Material blockType = itemMaterialMappings.getOrDefault(blockItem.getType(), blockItem.getType());
+		
 		//Play sound
-		BlockSoundType.fromType(blockItem.getType()).getPlaceEffect().play(block.getLocation());
+		BlockSoundType.fromType(blockType).getPlaceEffect().play(block.getLocation());
 		
 		//Place block
 		BlockState blockState = block.getState();
-		blockState.setType(blockItem.getType());
-		MaterialData newData = blockItem.getData();
-		if (newData instanceof Directional) ((Directional) newData).setFacingDirection(facing);
-		if (newData instanceof Tree) ((Tree) newData).setDirection(facing); //Tree does not implement directional, for whatever reason...
-		//FIXME: Anvil rotation
-		blockState.setData(newData);
+		blockState.setType(blockType);
+		if (blockItem.getType() == blockType) {
+			MaterialData newData = blockItem.getData();
+			if (newData instanceof Directional) ((Directional) newData).setFacingDirection(facing);
+			if (newData instanceof Tree)
+				((Tree) newData).setDirection(facing); //Tree does not implement directional, for whatever reason...
+			//FIXME: Anvil rotation
+			blockState.setData(newData);
+		}
 		blockState.update(true);
 	}
 	
@@ -512,6 +530,20 @@ public class ActivatorModule implements Module, Listener {
 	private ItemStack[] breakBlock(Block block, ItemStack tool) {
 		//Play sound and particles
 		block.getWorld().playEffect(block.getLocation(), Effect.STEP_SOUND, block.getType()); //FIXME: Doesn't take data into account
+		
+		//TODO: Implement in BlockBreaking.getDrops() instead
+		if (block.getState() instanceof ShulkerBox) {
+			ItemStack result = new ItemStack(block.getType());
+			BlockStateMeta meta = (BlockStateMeta) result.getItemMeta();
+			ShulkerBox box = (ShulkerBox) block.getState();
+			meta.setBlockState(box);
+			meta.setDisplayName(box.getCustomName());
+			result.setItemMeta(meta);
+			
+			block.setType(Material.AIR);
+			return new ItemStack[]{result};
+		}
+		
 		ItemStack[] results = BlockBreaking.getDrops(block, tool).toArray(new ItemStack[0]);
 		block.setType(Material.AIR);
 		return results;

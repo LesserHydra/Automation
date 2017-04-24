@@ -13,6 +13,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Dispenser;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Item;
@@ -20,6 +21,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -27,6 +29,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.material.Comparator;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 
@@ -36,7 +39,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 class AutocrafterModule implements Module, Listener {
 	
@@ -47,9 +49,9 @@ class AutocrafterModule implements Module, Listener {
 	@Override
 	public void init() {
 		@SuppressWarnings("deprecation")
-		MaterialData whiteGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.WHITE.getData());
+		MaterialData whiteGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.WHITE.getWoolData());
 		@SuppressWarnings("deprecation")
-		MaterialData blackGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.BLACK.getData());
+		MaterialData blackGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.BLACK.getWoolData());
 		Bukkit.getServer().addRecipe(new ShapelessRecipe(getFillerItem()).addIngredient(whiteGlassData));
 		Bukkit.getServer().addRecipe(new ShapelessRecipe(getBlockerItem()).addIngredient(blackGlassData));
 		
@@ -88,17 +90,13 @@ class AutocrafterModule implements Module, Listener {
 		interaction.setKeepItem(true);
 		
 		Dispenser dispenser = interaction.getDispenser();
-		replaceItem(dispenser.getInventory(), interaction.getItem());
+		replaceItem(dispenser, interaction.getItem());
 		
 		ItemStack[] craftingContents = Arrays.stream(dispenser.getInventory().getContents())
 				.map(item -> item != null ? item.clone() : new ItemStack(Material.AIR))
 				.map(item -> itemIsFiller(item) || itemIsBlocker(item) ? new ItemStack(Material.AIR) : item)
 				.peek(item -> item.setAmount(1))
 				.toArray(ItemStack[]::new);
-		/*ItemStack[] fillerItems = Arrays.stream(dispenser.getInventory().getContents())
-				.map(item -> item != null ? item.clone() : new ItemStack(Material.AIR))
-				.filter(this::itemIsFiller)
-				.toArray(ItemStack[]::new);*/
 		ItemStack[] remainingContents = Arrays.stream(dispenser.getInventory().getContents())
 				.map(item -> item != null && itemIsBlocker(item) ? item.clone() : new ItemStack(Material.AIR))
 				.toArray(ItemStack[]::new);
@@ -118,7 +116,6 @@ class AutocrafterModule implements Module, Listener {
 		//Drop result and remaining items
 		dispenser.getInventory().removeItem(remainingContents);
 		Collection<ItemStack> toDrop = new LinkedList<>();
-		//toDrop.addAll(Arrays.asList(fillerItems));
 		Arrays.stream(dispenser.getInventory().getContents())
 				.filter(Objects::nonNull)
 				.filter(item -> item.getType() != Material.AIR)
@@ -140,7 +137,6 @@ class AutocrafterModule implements Module, Listener {
 			//itemEntity.setVelocity(event.getVelocity()); //TODO: Random velocity
 		}
 		
-		
 		//Clear dispenser
 		dispenser.getInventory().clear();
 		Bukkit.getScheduler().runTaskLater(Automation.instance(),
@@ -149,18 +145,14 @@ class AutocrafterModule implements Module, Listener {
 		return true;
 	}
 	
-	private void replaceItem(Inventory inventory, ItemStack item) {
-		Optional<ItemStack> missing = Arrays.stream(inventory.getContents())
-				.filter(item::isSimilar)
-				.filter(it -> it.getAmount() == 0)
-				.findAny();
-		
-		if (missing.isPresent()) {
-			missing.get().setAmount(1);
-			return;
-		}
-		
-		inventory.addItem(item);
+	private void replaceItem(Dispenser dispenser, ItemStack item) {
+		int missing = Crafter.getMissingStack(dispenser, item);
+		if (missing == -1) dispenser.getInventory().addItem(item);
+		else dispenser.getInventory().setItem(missing, item);
+	}
+	
+	private boolean isAutocrafter(Block block) {
+		return block instanceof Dispenser && isAutocrafter((Dispenser)block);
 	}
 	
 	private boolean isAutocrafter(Dispenser dispenser) {
@@ -188,7 +180,7 @@ class AutocrafterModule implements Module, Listener {
 	@SuppressWarnings("deprecation")
 	private ItemStack getBlockerItem() {
 		ItemStack result = new ItemStack(Material.STAINED_GLASS_PANE);
-		result.setDurability(DyeColor.BLACK.getData());
+		result.setDurability(DyeColor.BLACK.getWoolData());
 		ItemMeta meta = result.getItemMeta();
 		meta.setDisplayName(ChatColor.WHITE.toString() + ChatColor.BOLD.toString() + "Blocker");
 		meta.setLore(Arrays.asList("", ChatColor.GRAY + "Permanently fills a spot in Autocrafters"));
@@ -202,14 +194,14 @@ class AutocrafterModule implements Module, Listener {
 	@SuppressWarnings("deprecation")
 	private boolean itemIsFiller(ItemStack item) {
 		return item.getType() == Material.STAINED_GLASS_PANE
-				&& item.getDurability() == DyeColor.WHITE.getData()
+				&& item.getDurability() == DyeColor.WHITE.getWoolData()
 				&& item.getEnchantmentLevel(Enchantment.ARROW_DAMAGE) > 0;
 	}
 	
 	@SuppressWarnings("deprecation")
 	private boolean itemIsBlocker(ItemStack item) {
 		return item.getType() == Material.STAINED_GLASS_PANE
-				&& item.getDurability() == DyeColor.BLACK.getData()
+				&& item.getDurability() == DyeColor.BLACK.getWoolData()
 				&& item.getEnchantmentLevel(Enchantment.ARROW_DAMAGE) > 0;
 	}
 	

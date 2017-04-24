@@ -1,24 +1,36 @@
 package com.lesserhydra.automation.volatilecode;
 
-import java.util.Arrays;
+import net.minecraft.server.v1_11_R1.Container;
+import net.minecraft.server.v1_11_R1.CraftingManager;
+import net.minecraft.server.v1_11_R1.EntityHuman;
+import net.minecraft.server.v1_11_R1.IRecipe;
+import net.minecraft.server.v1_11_R1.InventoryCraftResult;
+import net.minecraft.server.v1_11_R1.InventoryCrafting;
+import net.minecraft.server.v1_11_R1.ItemStack;
+import net.minecraft.server.v1_11_R1.World;
+import org.bukkit.Material;
+import org.bukkit.craftbukkit.v1_11_R1.CraftWorld;
+import org.bukkit.craftbukkit.v1_11_R1.block.CraftDispenser;
+import org.bukkit.craftbukkit.v1_11_R1.inventory.CraftItemStack;
+import org.bukkit.inventory.InventoryView;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.bukkit.craftbukkit.v1_10_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_10_R1.inventory.CraftItemStack;
-import org.bukkit.inventory.InventoryView;
-import net.minecraft.server.v1_10_R1.Container;
-import net.minecraft.server.v1_10_R1.CraftingManager;
-import net.minecraft.server.v1_10_R1.EntityHuman;
-import net.minecraft.server.v1_10_R1.IRecipe;
-import net.minecraft.server.v1_10_R1.InventoryCraftResult;
-import net.minecraft.server.v1_10_R1.InventoryCrafting;
-import net.minecraft.server.v1_10_R1.ItemStack;
-import net.minecraft.server.v1_10_R1.World;
 
 public class Crafter {
+	
+	public static int getMissingStack(org.bukkit.block.Dispenser dispenser, org.bukkit.inventory.ItemStack missingItem) {
+		ItemStack nmsMissing = CraftItemStack.asNMSCopy(missingItem);
+		List<ItemStack> contents = ((CraftDispenser)dispenser).getTileEntity().getContents();
+		for (int i = 0; i < 9; ++i) {
+			ItemStack stack = contents.get(i);
+			if (stack.getCount() == 0 && stack.doMaterialsMatch(nmsMissing)) return i;
+		}
+		return -1;
+	}
 	
 	public static List<org.bukkit.inventory.ItemStack> craft(org.bukkit.inventory.ItemStack[] contents, org.bukkit.World bukkitWorld) {
 		//Create inventory
@@ -54,9 +66,10 @@ public class Crafter {
 		//Build results list
 		List<org.bukkit.inventory.ItemStack> results = new LinkedList<>();
 		results.add(CraftItemStack.asBukkitCopy(craftingResult));
-		Arrays.stream(recipe.b(invCraft)) //OBF: Get inventory remainder
+		recipe.b(invCraft).stream() //OBF: Get inventory remainder
 				.filter(Objects::nonNull)
 				.map(CraftItemStack::asBukkitCopy)
+				.filter(item -> item.getType() != Material.AIR)
 				.forEach(results::add);
 		
 		return results;
