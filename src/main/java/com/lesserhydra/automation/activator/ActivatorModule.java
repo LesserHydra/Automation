@@ -33,6 +33,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
+import org.bukkit.inventory.meta.PotionMeta;
+import org.bukkit.material.Cauldron;
 import org.bukkit.material.CocoaPlant;
 import org.bukkit.material.Directional;
 import org.bukkit.material.Dye;
@@ -79,6 +81,11 @@ public class ActivatorModule implements Module, Listener {
 		
 		registerHandler(this::handleItemFramePlacing);
 		registerHandler(Material.SHEARS, this::handleItemFrameRemoving);
+		
+		registerHandler(Material.WATER_BUCKET, this::handleCauldronPut);
+		registerHandler(Material.BUCKET, this::handleCauldronTake);
+		registerHandler(Material.POTION, this::handleCauldronPutSome);
+		registerHandler(Material.GLASS_BOTTLE, this::handleCauldronTakeSome);
 		
 		registerHandler(Material.SEEDS, this::handleSeedPlanting);
 		registerHandler(Material.BEETROOT_SEEDS, this::handleSeedPlanting);
@@ -193,10 +200,11 @@ public class ActivatorModule implements Module, Listener {
 	
 	
 	/*---------------Interaction Handlers---------------*/
-	
 	private static final Map<Material, Material> itemMaterialMappings =
 			MapBuilder.init(HashMap<Material, Material>::new)
 					.put(Material.CAKE, Material.CAKE_BLOCK)
+					.put(Material.CAULDRON_ITEM, Material.CAULDRON)
+					.put(Material.BREWING_STAND_ITEM, Material.BREWING_STAND)
 					.buildImmutable();
 	
 	/*
@@ -415,6 +423,83 @@ public class ActivatorModule implements Module, Listener {
 		
 		//Results
 		interaction.setResults(frameItem);
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	private boolean handleCauldronPut(DispenserInteraction interaction) {
+		if (interaction.getFacingBlock().getType() != Material.CAULDRON) return false;
+		interaction.validate();
+		
+		BlockState state = interaction.getFacingBlock().getState();
+		Cauldron cauldron = (Cauldron) state.getData();
+		if (cauldron.isFull()) return false;
+		
+		cauldron.setData((byte) 3);
+		state.setData(cauldron);
+		state.update();
+		
+		interaction.setKeepItem(false);
+		interaction.setResults(new ItemStack(Material.BUCKET, 1));
+		
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	private boolean handleCauldronTake(DispenserInteraction interaction) {
+		if (interaction.getFacingBlock().getType() != Material.CAULDRON) return false;
+		interaction.validate();
+		
+		BlockState state = interaction.getFacingBlock().getState();
+		Cauldron cauldron = (Cauldron) state.getData();
+		if (!cauldron.isFull()) return false;
+		
+		cauldron.setData((byte) 0);
+		state.setData(cauldron);
+		state.update();
+		
+		interaction.setKeepItem(false);
+		interaction.setResults(new ItemStack(Material.WATER_BUCKET, 1));
+		
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	private boolean handleCauldronPutSome(DispenserInteraction interaction) {
+		if (interaction.getFacingBlock().getType() != Material.CAULDRON) return false;
+		if (((PotionMeta)interaction.getItem().getItemMeta()).hasCustomEffects()) return false;
+		interaction.validate();
+		
+		BlockState state = interaction.getFacingBlock().getState();
+		Cauldron cauldron = (Cauldron) state.getData();
+		if (cauldron.isFull()) return false;
+		
+		cauldron.setData((byte) (cauldron.getData() + 1));
+		state.setData(cauldron);
+		state.update();
+		
+		interaction.setKeepItem(false);
+		interaction.setResults(new ItemStack(Material.GLASS_BOTTLE, 1));
+		
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	private boolean handleCauldronTakeSome(DispenserInteraction interaction) {
+		if (interaction.getFacingBlock().getType() != Material.CAULDRON) return false;
+		interaction.validate();
+		
+		BlockState state = interaction.getFacingBlock().getState();
+		Cauldron cauldron = (Cauldron) state.getData();
+		if (cauldron.isEmpty()) return false;
+		
+		cauldron.setData((byte) (cauldron.getData() - 1));
+		state.setData(cauldron);
+		state.update();
+		
+		interaction.setKeepItem(false);
+		interaction.setResults(new ItemStack(Material.POTION, 1));
+		
 		return true;
 	}
 	
