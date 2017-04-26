@@ -82,6 +82,8 @@ public class ActivatorModule implements Module, Listener {
 		registerHandler(this::handleItemFramePlacing);
 		registerHandler(Material.SHEARS, this::handleItemFrameRemoving);
 		
+		registerHandler(Material.GLASS_BOTTLE, this::handleFillBottle);
+		
 		registerHandler(Material.WATER_BUCKET, this::handleCauldronPut);
 		registerHandler(Material.BUCKET, this::handleCauldronTake);
 		registerHandler(Material.POTION, this::handleCauldronPutSome);
@@ -423,6 +425,21 @@ public class ActivatorModule implements Module, Listener {
 		
 		//Results
 		interaction.setResults(frameItem);
+		return true;
+	}
+	
+	@SuppressWarnings("deprecation")
+	private boolean handleFillBottle(DispenserInteraction interaction) {
+		if (interaction.getFacingBlock().getType() != Material.STATIONARY_WATER
+				&& interaction.getFacingBlock().getType() != Material.WATER) return false;
+		interaction.validate();
+		
+		if (interaction.getFacingBlock().getData() != 0) return false;
+		
+		//TODO: Sound
+		interaction.setKeepItem(false);
+		interaction.setResults(new ItemStack(Material.POTION, 1));
+		
 		return true;
 	}
 	
