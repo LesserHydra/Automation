@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import com.comphenix.protocol.ProtocolLibrary;
 import com.lesserhydra.automation.Module;
 import com.lesserhydra.util.MapBuilder;
 import org.apache.commons.lang.ArrayUtils;
@@ -60,10 +61,14 @@ public class ActivatorModule implements Module, Listener {
 	private final PriorityView<Priority, InteractionHandler> generalHandlers = new EnumMapPriorityView<>(Priority.class);
 	
 	private final Automation plugin;
+	private DispenserClickCanceler clickCanceler;
 	
 	public ActivatorModule(Automation plugin) { this.plugin = plugin; }
 	
 	public void init() {
+		clickCanceler = new DispenserClickCanceler(plugin);
+		ProtocolLibrary.getProtocolManager().addPacketListener(clickCanceler);
+		
 		plugin.getServer().getPluginManager().registerEvents(this, plugin);
 		
 		registerHandler(this::handleBlockPlacing, Priority.LAST);
@@ -102,6 +107,7 @@ public class ActivatorModule implements Module, Listener {
 	@Override
 	public void deinit() {
 		HandlerList.unregisterAll(this);
+		ProtocolLibrary.getProtocolManager().removePacketListener(clickCanceler);
 	}
 	
 	@EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -121,11 +127,14 @@ public class ActivatorModule implements Module, Listener {
 		
 		//Apply interaction
 		if (!success) return;
+		cancelDispenserSound(event.getBlock());
 		Bukkit.getScheduler().runTaskLater(Automation.instance(), () -> {
 			handleItem(dispenser, interaction);
 			handleAddedItems(dispenser, interaction);
 		}, 0L);
 	}
+	
+	public void cancelDispenserSound(Block block) { clickCanceler.cancelDispenserSound(block); }
 	
 	private boolean handleInteraction(DispenserInteraction interaction) {
 		PriorityView<Priority, InteractionHandler> typeHandlers = typeHandlersMap.get(interaction.getItem().getType());
