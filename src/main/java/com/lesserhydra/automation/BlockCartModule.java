@@ -7,6 +7,7 @@ import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.MapBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Minecart;
@@ -32,7 +33,14 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Cake;
 import org.bukkit.material.Cauldron;
+import org.bukkit.material.Comparator;
+import org.bukkit.material.Diode;
+import org.bukkit.material.Directional;
+import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
+import org.bukkit.material.Openable;
+import org.bukkit.material.SimpleAttachableMaterialData;
+import org.bukkit.material.Tripwire;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -82,6 +90,16 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.CAKE, item -> new Cake())
 					.put(Material.CAULDRON_ITEM, item -> new Cauldron())
 					.put(Material.BREWING_STAND_ITEM, item -> new MaterialData(Material.BREWING_STAND))
+					.put(Material.STRING, item -> new Tripwire())
+					.put(Material.STONE_BUTTON, BlockCartModule::makeAttachedBottom)
+					.put(Material.WOOD_BUTTON, BlockCartModule::makeAttachedBottom)
+					.put(Material.LEVER, BlockCartModule::makeAttachedBottom)
+					.put(Material.DIODE, item -> new Diode(BlockFace.NORTH))
+					.put(Material.REDSTONE_COMPARATOR, item -> new Comparator())
+					.put(Material.PISTON_BASE, BlockCartModule::makeFacingUp)
+					.put(Material.PISTON_STICKY_BASE, BlockCartModule::makeFacingUp)
+					.put(Material.DISPENSER, BlockCartModule::makeFacingUp)
+					.put(Material.DROPPER, BlockCartModule::makeFacingUp)
 					.buildImmutable();
 	
 	private final Map<Material, BiConsumer<ItemStack, Minecart>> finalWork =
@@ -104,6 +122,106 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.YELLOW_SHULKER_BOX, BlockCartModule::finilizeShulkerCart)
 					//.put(Material.MOB_SPAWNER, BlockCartModule::finalizeSpawner)
 					.buildImmutable();
+
+	private final Map<Material, Function<Minecart, ItemStack>> itemReturnOverride =
+			MapBuilder.init(HashMap<Material, Function<Minecart, ItemStack>>::new)
+					.put(Material.CAKE_BLOCK, cart -> {
+						Cake cakeData = (Cake)cart.getDisplayBlock();
+						if (cakeData.getSlicesEaten() > 0) return new ItemStack(Material.AIR);
+						return new ItemStack(Material.CAKE, 1);
+					})
+					.put(Material.CAULDRON, cart -> new ItemStack(Material.CAULDRON_ITEM, 1))
+					.put(Material.BREWING_STAND, cart -> new ItemStack(Material.BREWING_STAND_ITEM, 1))
+					.put(Material.TRIPWIRE, cart -> new ItemStack(Material.STRING, 1))
+					.put(Material.BLACK_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.BLUE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.BROWN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.CYAN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.GRAY_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.GREEN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.LIGHT_BLUE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.LIME_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.MAGENTA_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.ORANGE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.PINK_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.PURPLE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.RED_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.SILVER_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.WHITE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					.put(Material.YELLOW_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
+					//.put(Material.MOB_SPAWNER, BlockCartModule::spawnerReturn)
+					.put(Material.DIODE_BLOCK_OFF, item -> new ItemStack(Material.DIODE, 1))
+					.put(Material.REDSTONE_COMPARATOR_OFF, item -> new ItemStack(Material.REDSTONE_COMPARATOR, 1))
+					.put(Material.DAYLIGHT_DETECTOR_INVERTED, item -> new ItemStack(Material.DAYLIGHT_DETECTOR, 1))
+					.buildImmutable();
+	
+	private final Map<Material, BiConsumer<Player, Minecart>> clickFunctionality =
+			MapBuilder.init(HashMap<Material, BiConsumer<Player, Minecart>>::new)
+					.put(Material.CAKE_BLOCK, (player, cart) -> {
+						Cake cakeData = (Cake) cart.getDisplayBlock();
+						if (player.getFoodLevel() >= 20) return;
+						cakeData.setSlicesRemaining(cakeData.getSlicesRemaining() - 1);
+						cart.setDisplayBlock(cakeData);
+						player.setFoodLevel(player.getFoodLevel() + 2);
+						player.setSaturation(player.getSaturation() + 0.4F);
+						if (cakeData.getSlicesRemaining() == 0) removeFromCart(cart);
+					})
+					.put(Material.ENDER_CHEST, (player, cart) -> {
+						//TODO: player.playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
+						player.openInventory(player.getEnderChest());
+					})
+					.put(Material.WORKBENCH, (player, cart) -> player.openWorkbench(cart.getLocation(), true))
+					.put(Material.FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.ACACIA_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.BIRCH_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.DARK_OAK_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.JUNGLE_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.SPRUCE_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.TRAP_DOOR, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.IRON_TRAPDOOR, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.LEVER, (p, cart) -> interactWithLever(cart))
+					.put(Material.DIODE_BLOCK_OFF, (p, cart) -> interactWithDiode(cart))
+					.put(Material.REDSTONE_COMPARATOR_OFF, (p, cart) -> interactWithComparator(cart))
+					.put(Material.DAYLIGHT_DETECTOR, (p, cart) -> cart.setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR_INVERTED)))
+					.put(Material.DAYLIGHT_DETECTOR_INVERTED, (p, cart) -> cart.setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR)))
+					.buildImmutable();
+	
+	private static MaterialData makeFacingUp(ItemStack item) {
+		MaterialData data = item.getData();
+		((Directional)data).setFacingDirection(BlockFace.UP);
+		return data;
+	}
+	
+	private static MaterialData makeAttachedBottom(ItemStack item) {
+		SimpleAttachableMaterialData data = (SimpleAttachableMaterialData) item.getData();
+		data.setFacingDirection(BlockFace.UP);
+		return data;
+	}
+	
+	private static void interactWithLever(Minecart minecart) {
+		Lever lever = (Lever) minecart.getDisplayBlock();
+		lever.setPowered(!lever.isPowered());
+		minecart.setDisplayBlock(lever);
+	}
+	
+	private static void interactWithDiode(Minecart minecart) {
+		Diode diode = (Diode) minecart.getDisplayBlock();
+		diode.setDelay(diode.getDelay()%4 + 1);
+		minecart.setDisplayBlock(diode);
+	}
+	
+	private static void interactWithComparator(Minecart minecart) {
+		Comparator comparator = (Comparator) minecart.getDisplayBlock();
+		comparator.setSubtractionMode(!comparator.isSubtractionMode());
+		minecart.setDisplayBlock(comparator);
+	}
+	
+	private static void interactWithOpenable(Minecart minecart) {
+		MaterialData display = minecart.getDisplayBlock();
+		//TODO: Sound
+		((Openable)display).setOpen(!((Openable)display).isOpen());
+		minecart.setDisplayBlock(display);
+	}
 	
 	//TODO: Currently requires nms
 	/*private static void finalizeSpawner(ItemStack item, Minecart cart) {
@@ -146,52 +264,6 @@ class BlockCartModule implements Module, Listener {
 		return item;
 	}
 	
-	private final Map<Material, Function<Minecart, ItemStack>> itemReturnOverride =
-			MapBuilder.init(HashMap<Material, Function<Minecart, ItemStack>>::new)
-					.put(Material.CAKE_BLOCK, cart -> {
-						Cake cakeData = (Cake)cart.getDisplayBlock();
-						if (cakeData.getSlicesEaten() > 0) return new ItemStack(Material.AIR);
-						return new ItemStack(Material.CAKE, 1);
-					})
-					.put(Material.CAULDRON, cart -> new ItemStack(Material.CAULDRON_ITEM, 1))
-					.put(Material.BREWING_STAND, cart -> new ItemStack(Material.BREWING_STAND_ITEM, 1))
-					.put(Material.BLACK_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.BLUE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.BROWN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.CYAN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.GRAY_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.GREEN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.LIGHT_BLUE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.LIME_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.MAGENTA_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.ORANGE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.PINK_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.PURPLE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.RED_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.SILVER_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.WHITE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					.put(Material.YELLOW_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					//.put(Material.MOB_SPAWNER, BlockCartModule::spawnerReturn)
-					.buildImmutable();
-	
-	private final Map<Material, BiConsumer<Player, Minecart>> clickFunctionality =
-			MapBuilder.init(HashMap<Material, BiConsumer<Player, Minecart>>::new)
-					.put(Material.CAKE_BLOCK, (player, cart) -> {
-						Cake cakeData = (Cake) cart.getDisplayBlock();
-						if (player.getFoodLevel() >= 20) return;
-						cakeData.setSlicesRemaining(cakeData.getSlicesRemaining() - 1);
-						cart.setDisplayBlock(cakeData);
-						player.setFoodLevel(player.getFoodLevel() + 2);
-						player.setSaturation(player.getSaturation() + 0.4F);
-						if (cakeData.getSlicesRemaining() == 0) removeFromCart(cart);
-					})
-					.put(Material.ENDER_CHEST, (player, cart) -> {
-						//TODO: player.playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
-						player.openInventory(player.getEnderChest());
-					})
-					.put(Material.WORKBENCH, (player, cart) -> player.openWorkbench(cart.getLocation(), true))
-					.buildImmutable();
-	
 	private final Automation plugin;
 	
 	BlockCartModule(Automation plugin) { this.plugin = plugin; }
@@ -217,7 +289,7 @@ class BlockCartModule implements Module, Listener {
 		ItemStack handItem = player.getInventory().getItemInMainHand();
 		
 		//Cancel interaction with block cart
-		if (minecart.getType() == EntityType.MINECART && doesMinecartHaveItem(minecart)) {
+		if (!player.isSneaking() && minecart.getType() == EntityType.MINECART && doesMinecartHaveItem(minecart)) {
 			event.setCancelled(true);
 			//TODO: Use interaction?
 			clickFunctionality.getOrDefault(minecart.getDisplayBlock().getItemType(), (p, m) -> {}).accept(player, minecart);
