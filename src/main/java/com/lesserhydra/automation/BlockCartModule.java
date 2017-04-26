@@ -7,6 +7,8 @@ import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.MapBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.EntityType;
@@ -36,10 +38,11 @@ import org.bukkit.material.Cauldron;
 import org.bukkit.material.Comparator;
 import org.bukkit.material.Diode;
 import org.bukkit.material.Directional;
+import org.bukkit.material.Gate;
 import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
-import org.bukkit.material.Openable;
 import org.bukkit.material.SimpleAttachableMaterialData;
+import org.bukkit.material.TrapDoor;
 import org.bukkit.material.Tripwire;
 
 import java.util.Arrays;
@@ -96,10 +99,11 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.LEVER, BlockCartModule::makeAttachedBottom)
 					.put(Material.DIODE, item -> new Diode(BlockFace.NORTH))
 					.put(Material.REDSTONE_COMPARATOR, item -> new Comparator())
-					.put(Material.PISTON_BASE, BlockCartModule::makeFacingUp)
-					.put(Material.PISTON_STICKY_BASE, BlockCartModule::makeFacingUp)
-					.put(Material.DISPENSER, BlockCartModule::makeFacingUp)
-					.put(Material.DROPPER, BlockCartModule::makeFacingUp)
+					.put(Material.PISTON_BASE, BlockCartModule::makeFacingForward)
+					.put(Material.PISTON_STICKY_BASE, BlockCartModule::makeFacingForward)
+					.put(Material.DISPENSER, BlockCartModule::makeFacingForward)
+					.put(Material.DROPPER, BlockCartModule::makeFacingForward)
+					.put(Material.OBSERVER, BlockCartModule::makeFacingForward)
 					.buildImmutable();
 	
 	private final Map<Material, BiConsumer<ItemStack, Minecart>> finalWork =
@@ -167,18 +171,19 @@ class BlockCartModule implements Module, Listener {
 						if (cakeData.getSlicesRemaining() == 0) removeFromCart(cart);
 					})
 					.put(Material.ENDER_CHEST, (player, cart) -> {
-						//TODO: player.playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
+						cart.getWorld().playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
+						//TODO: Close sound?
 						player.openInventory(player.getEnderChest());
 					})
 					.put(Material.WORKBENCH, (player, cart) -> player.openWorkbench(cart.getLocation(), true))
-					.put(Material.FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.ACACIA_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.BIRCH_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.DARK_OAK_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.JUNGLE_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.SPRUCE_FENCE_GATE, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.TRAP_DOOR, (p, cart) -> interactWithOpenable(cart))
-					.put(Material.IRON_TRAPDOOR, (p, cart) -> interactWithOpenable(cart))
+					.put(Material.FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.ACACIA_FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.BIRCH_FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.DARK_OAK_FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.JUNGLE_FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.SPRUCE_FENCE_GATE, (p, cart) -> interactWithGate(cart))
+					.put(Material.TRAP_DOOR, (p, cart) -> interactWithTrapdoor(cart))
+					.put(Material.IRON_TRAPDOOR, (p, cart) -> interactWithTrapdoor(cart))
 					.put(Material.LEVER, (p, cart) -> interactWithLever(cart))
 					.put(Material.DIODE_BLOCK_OFF, (p, cart) -> interactWithDiode(cart))
 					.put(Material.REDSTONE_COMPARATOR_OFF, (p, cart) -> interactWithComparator(cart))
@@ -192,6 +197,12 @@ class BlockCartModule implements Module, Listener {
 		return data;
 	}
 	
+	private static MaterialData makeFacingForward(ItemStack item) {
+		MaterialData data = item.getData();
+		((Directional)data).setFacingDirection(BlockFace.NORTH);
+		return data;
+	}
+	
 	private static MaterialData makeAttachedBottom(ItemStack item) {
 		SimpleAttachableMaterialData data = (SimpleAttachableMaterialData) item.getData();
 		data.setFacingDirection(BlockFace.UP);
@@ -202,6 +213,7 @@ class BlockCartModule implements Module, Listener {
 		Lever lever = (Lever) minecart.getDisplayBlock();
 		lever.setPowered(!lever.isPowered());
 		minecart.setDisplayBlock(lever);
+		minecart.getWorld().playSound(minecart.getLocation(), Sound.BLOCK_LEVER_CLICK, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
 	private static void interactWithDiode(Minecart minecart) {
@@ -216,11 +228,31 @@ class BlockCartModule implements Module, Listener {
 		minecart.setDisplayBlock(comparator);
 	}
 	
-	private static void interactWithOpenable(Minecart minecart) {
-		MaterialData display = minecart.getDisplayBlock();
-		//TODO: Sound
-		((Openable)display).setOpen(!((Openable)display).isOpen());
+	private static void interactWithTrapdoor(Minecart minecart) {
+		TrapDoor display = (TrapDoor) minecart.getDisplayBlock();
+		display.setOpen(!display.isOpen());
 		minecart.setDisplayBlock(display);
+		
+		Sound sound = display.isOpen() ? Sound.BLOCK_WOODEN_TRAPDOOR_OPEN : Sound.BLOCK_WOODEN_TRAPDOOR_CLOSE;
+		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
+	}
+	
+	private static void interactWithIronTrapdoor(Minecart minecart) {
+		TrapDoor display = (TrapDoor) minecart.getDisplayBlock();
+		display.setOpen(!display.isOpen());
+		minecart.setDisplayBlock(display);
+		
+		Sound sound = display.isOpen() ? Sound.BLOCK_IRON_TRAPDOOR_OPEN : Sound.BLOCK_IRON_TRAPDOOR_CLOSE;
+		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
+	}
+	
+	private static void interactWithGate(Minecart minecart) {
+		Gate display = (Gate) minecart.getDisplayBlock();
+		display.setOpen(!display.isOpen());
+		minecart.setDisplayBlock(display);
+		
+		Sound sound = display.isOpen() ? Sound.BLOCK_FENCE_GATE_OPEN : Sound.BLOCK_FENCE_GATE_CLOSE;
+		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
 	//TODO: Currently requires nms

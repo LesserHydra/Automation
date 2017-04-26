@@ -1,15 +1,15 @@
 package com.lesserhydra.automation.activator;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.stream.Stream;
-
 import com.comphenix.protocol.ProtocolLibrary;
+import com.lesserhydra.automation.Automation;
 import com.lesserhydra.automation.Module;
+import com.lesserhydra.automation.volatilecode.BlockBreaking;
+import com.lesserhydra.automation.volatilecode.BlockSoundType;
+import com.lesserhydra.bukkitutil.BlockUtil;
+import com.lesserhydra.bukkitutil.InventoryUtil;
+import com.lesserhydra.util.EnumMapPriorityView;
 import com.lesserhydra.util.MapBuilder;
-import org.apache.commons.lang.ArrayUtils;
+import com.lesserhydra.util.PriorityView;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Effect;
@@ -43,16 +43,19 @@ import org.bukkit.material.MaterialData;
 import org.bukkit.material.Tree;
 import org.bukkit.material.Wood;
 import org.bukkit.material.Wool;
-import com.lesserhydra.automation.Automation;
-import com.lesserhydra.automation.volatilecode.BlockBreaking;
-import com.lesserhydra.automation.volatilecode.BlockSoundType;
-import com.lesserhydra.bukkitutil.BlockUtil;
-import com.lesserhydra.bukkitutil.InventoryUtil;
-import com.lesserhydra.util.EnumMapPriorityView;
-import com.lesserhydra.util.PriorityView;
+
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.stream.Stream;
 
 //TODO: Add proper unregistering
 //TODO: Allow general handlers to overide specialty, with regards to priority
+
+//TODO: Sound for all the things
+//TODO: Sound pitch variations
+
 public class ActivatorModule implements Module, Listener {
 	
 	private static final Random rand = new Random();
@@ -121,7 +124,7 @@ public class ActivatorModule implements Module, Listener {
 		DispenserInteraction interaction = new DispenserInteraction(dispenser, item);
 		boolean success = handleInteraction(interaction);
 		
-		//For valid interactions (mainly matching tools), cancel event even is unsuccessful
+		//For valid interactions (mainly matching tools), cancel event even if unsuccessful
 		if (!interaction.isValid()) return;
 		event.setCancelled(true);
 		
@@ -177,31 +180,34 @@ public class ActivatorModule implements Module, Listener {
 				.forEach(remainingItem -> interaction.getFacingBlock().getWorld().dropItemNaturally(interaction.getFacingBlock().getLocation().add(0.5, 0.5, 0.5), remainingItem));
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void registerHandler(InteractionHandler handler) {
 		registerHandler(handler, Priority.NORMAL);
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void registerHandler(InteractionHandler handler, Priority priority) {
 		generalHandlers.add(priority, handler);
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void registerHandler(Material toolType, InteractionHandler handler) {
 		registerHandler(toolType, handler, Priority.NORMAL);
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void registerHandler(Material toolType, InteractionHandler handler, Priority priority) {
-		PriorityView<Priority, InteractionHandler> handlerList = typeHandlersMap.get(toolType);
-		if (handlerList == null) {
-			handlerList = new EnumMapPriorityView<>(Priority.class);
-			typeHandlersMap.put(toolType, handlerList);
-		}
+		PriorityView<Priority, InteractionHandler> handlerList =
+				typeHandlersMap.computeIfAbsent(toolType, k -> new EnumMapPriorityView<>(Priority.class));
 		handlerList.add(priority, handler);
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void unregisterHandler(InteractionHandler handler) {
 		generalHandlers.remove(handler);
 	}
 	
+	@SuppressWarnings("WeakerAccess")
 	public void unregisterHandler(Material toolType, InteractionHandler handler) {
 		PriorityView<Priority, InteractionHandler> handlerList = typeHandlersMap.get(toolType);
 		if (handlerList == null) return;
@@ -445,9 +451,10 @@ public class ActivatorModule implements Module, Listener {
 		
 		if (interaction.getFacingBlock().getData() != 0) return false;
 		
-		//TODO: Sound
 		interaction.setKeepItem(false);
 		interaction.setResults(new ItemStack(Material.POTION, 1));
+		interaction.getDispenser().getWorld().playSound(interaction.getDispenser().getLocation(),
+				Sound.ITEM_BOTTLE_FILL, 1.0F, 1.0F);
 		
 		return true;
 	}
@@ -467,6 +474,8 @@ public class ActivatorModule implements Module, Listener {
 		
 		interaction.setKeepItem(false);
 		interaction.setResults(new ItemStack(Material.BUCKET, 1));
+		interaction.getDispenser().getWorld().playSound(interaction.getDispenser().getLocation(),
+				Sound.ITEM_BUCKET_EMPTY, 1.0F, 1.0F);
 		
 		return true;
 	}
@@ -486,6 +495,8 @@ public class ActivatorModule implements Module, Listener {
 		
 		interaction.setKeepItem(false);
 		interaction.setResults(new ItemStack(Material.WATER_BUCKET, 1));
+		interaction.getDispenser().getWorld().playSound(interaction.getDispenser().getLocation(),
+				Sound.ITEM_BUCKET_FILL, 1.0F, 1.0F);
 		
 		return true;
 	}
@@ -506,6 +517,8 @@ public class ActivatorModule implements Module, Listener {
 		
 		interaction.setKeepItem(false);
 		interaction.setResults(new ItemStack(Material.GLASS_BOTTLE, 1));
+		interaction.getDispenser().getWorld().playSound(interaction.getDispenser().getLocation(),
+				Sound.ITEM_BOTTLE_EMPTY, 1.0F, 1.0F);
 		
 		return true;
 	}
@@ -525,6 +538,8 @@ public class ActivatorModule implements Module, Listener {
 		
 		interaction.setKeepItem(false);
 		interaction.setResults(new ItemStack(Material.POTION, 1));
+		interaction.getDispenser().getWorld().playSound(interaction.getDispenser().getLocation(),
+				Sound.ITEM_BOTTLE_FILL, 1.0F, 1.0F);
 		
 		return true;
 	}
