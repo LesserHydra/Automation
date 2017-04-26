@@ -12,6 +12,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.ShulkerBox;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.minecart.CommandMinecart;
@@ -28,6 +29,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
+import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -41,15 +43,19 @@ import org.bukkit.material.Directional;
 import org.bukkit.material.Gate;
 import org.bukkit.material.Lever;
 import org.bukkit.material.MaterialData;
+import org.bukkit.material.RedstoneWire;
 import org.bukkit.material.SimpleAttachableMaterialData;
 import org.bukkit.material.TrapDoor;
 import org.bukkit.material.Tripwire;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 class BlockCartModule implements Module, Listener {
 	
@@ -57,7 +63,6 @@ class BlockCartModule implements Module, Listener {
 	
 	//TODO: LOTS of cleanup, including:
 	//Combine maps, use single class that controls how different materials are handled
-	//Properly handle interact action
 	//Sort functions nicely
 	//Other...
 	
@@ -94,6 +99,7 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.CAULDRON_ITEM, item -> new Cauldron())
 					.put(Material.BREWING_STAND_ITEM, item -> new MaterialData(Material.BREWING_STAND))
 					.put(Material.STRING, item -> new Tripwire())
+					.put(Material.REDSTONE, item -> new RedstoneWire())
 					.put(Material.STONE_BUTTON, BlockCartModule::makeAttachedBottom)
 					.put(Material.WOOD_BUTTON, BlockCartModule::makeAttachedBottom)
 					.put(Material.LEVER, BlockCartModule::makeAttachedBottom)
@@ -137,6 +143,7 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.CAULDRON, cart -> new ItemStack(Material.CAULDRON_ITEM, 1))
 					.put(Material.BREWING_STAND, cart -> new ItemStack(Material.BREWING_STAND_ITEM, 1))
 					.put(Material.TRIPWIRE, cart -> new ItemStack(Material.STRING, 1))
+					.put(Material.REDSTONE_WIRE, cart -> new ItemStack(Material.REDSTONE, 1))
 					.put(Material.BLACK_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
 					.put(Material.BLUE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
 					.put(Material.BROWN_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
@@ -159,36 +166,37 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.DAYLIGHT_DETECTOR_INVERTED, item -> new ItemStack(Material.DAYLIGHT_DETECTOR, 1))
 					.buildImmutable();
 	
-	private final Map<Material, BiConsumer<Player, Minecart>> clickFunctionality =
-			MapBuilder.init(HashMap<Material, BiConsumer<Player, Minecart>>::new)
-					.put(Material.CAKE_BLOCK, (player, cart) -> {
-						Cake cakeData = (Cake) cart.getDisplayBlock();
-						if (player.getFoodLevel() >= 20) return;
-						cakeData.setSlicesRemaining(cakeData.getSlicesRemaining() - 1);
-						cart.setDisplayBlock(cakeData);
-						player.setFoodLevel(player.getFoodLevel() + 2);
-						player.setSaturation(player.getSaturation() + 0.4F);
-						if (cakeData.getSlicesRemaining() == 0) removeFromCart(cart);
+	private final Map<Material, Consumer<BlockCartInteraction>> clickFunctionality =
+			MapBuilder.init(HashMap<Material, Consumer<BlockCartInteraction>>::new)
+					.put(Material.CAKE_BLOCK, BlockCartModule::interactWithCake)
+					.put(Material.ENDER_CHEST, BlockCartModule::interactWithEnderchest)
+					.put(Material.WORKBENCH, (interaction) -> {
+						if (!interaction.hasPlayer()) return;
+						interaction.setSuccess(true);
+						Player player = interaction.getPlayer();
+						Minecart cart = interaction.getMinecart();
+						player.openWorkbench(cart.getLocation(), true);
 					})
-					.put(Material.ENDER_CHEST, (player, cart) -> {
-						cart.getWorld().playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
-						//TODO: Close sound?
-						player.openInventory(player.getEnderChest());
+					.put(Material.FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.ACACIA_FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.BIRCH_FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.DARK_OAK_FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.JUNGLE_FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.SPRUCE_FENCE_GATE, BlockCartModule::interactWithGate)
+					.put(Material.TRAP_DOOR, BlockCartModule::interactWithTrapdoor)
+					.put(Material.IRON_TRAPDOOR, BlockCartModule::interactWithIronTrapdoor)
+					.put(Material.LEVER, BlockCartModule::interactWithLever)
+					.put(Material.DIODE_BLOCK_OFF, BlockCartModule::interactWithDiode)
+					.put(Material.REDSTONE_COMPARATOR_OFF, BlockCartModule::interactWithComparator)
+					.put(Material.DAYLIGHT_DETECTOR, (interaction) -> {
+						interaction.setSuccess(true);
+						interaction.getMinecart().setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR_INVERTED));
 					})
-					.put(Material.WORKBENCH, (player, cart) -> player.openWorkbench(cart.getLocation(), true))
-					.put(Material.FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.ACACIA_FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.BIRCH_FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.DARK_OAK_FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.JUNGLE_FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.SPRUCE_FENCE_GATE, (p, cart) -> interactWithGate(cart))
-					.put(Material.TRAP_DOOR, (p, cart) -> interactWithTrapdoor(cart))
-					.put(Material.IRON_TRAPDOOR, (p, cart) -> interactWithTrapdoor(cart))
-					.put(Material.LEVER, (p, cart) -> interactWithLever(cart))
-					.put(Material.DIODE_BLOCK_OFF, (p, cart) -> interactWithDiode(cart))
-					.put(Material.REDSTONE_COMPARATOR_OFF, (p, cart) -> interactWithComparator(cart))
-					.put(Material.DAYLIGHT_DETECTOR, (p, cart) -> cart.setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR_INVERTED)))
-					.put(Material.DAYLIGHT_DETECTOR_INVERTED, (p, cart) -> cart.setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR)))
+					.put(Material.DAYLIGHT_DETECTOR_INVERTED, (interaction) -> {
+						interaction.setSuccess(true);
+						interaction.getMinecart().setDisplayBlock(new MaterialData(Material.DAYLIGHT_DETECTOR));
+					})
+					.put(Material.CAULDRON, BlockCartModule::interactWithCauldron)
 					.buildImmutable();
 	
 	private static MaterialData makeFacingUp(ItemStack item) {
@@ -209,26 +217,106 @@ class BlockCartModule implements Module, Listener {
 		return data;
 	}
 	
-	private static void interactWithLever(Minecart minecart) {
+	@SuppressWarnings("deprecation")
+	private static void interactWithCauldron(BlockCartInteraction interaction) {
+		ItemStack item = interaction.getItem();
+		Minecart minecart = interaction.getMinecart();
+		Cauldron cauldron = (Cauldron) interaction.getMinecart().getDisplayBlock();
+		
+		if (item.getType() == Material.WATER_BUCKET) {
+			if (cauldron.isFull()) return;
+			cauldron.setData((byte)3);
+			minecart.setDisplayBlock(cauldron);
+			minecart.getWorld().playSound(minecart.getLocation(), Sound.ITEM_BUCKET_EMPTY, 1.0F, 1.0F);
+			interaction.setSuccess(true);
+			interaction.setItemUsed(true);
+			interaction.setResult(new ItemStack(Material.BUCKET, 1));
+		}
+		else if (item.getType() == Material.BUCKET) {
+			if (!cauldron.isFull()) return;
+			cauldron.setData((byte)0);
+			minecart.setDisplayBlock(cauldron);
+			minecart.getWorld().playSound(minecart.getLocation(), Sound.ITEM_BUCKET_FILL, 1.0F, 1.0F);
+			interaction.setSuccess(true);
+			interaction.setItemUsed(true);
+			interaction.setResult(new ItemStack(Material.WATER_BUCKET, 1));
+		}
+		else if (item.getType() == Material.POTION) {
+			if (cauldron.isFull()) return;
+			cauldron.setData((byte) (cauldron.getData() + 1));
+			minecart.setDisplayBlock(cauldron);
+			minecart.getWorld().playSound(minecart.getLocation(), Sound.ITEM_BOTTLE_EMPTY, 1.0F, 1.0F);
+			interaction.setSuccess(true);
+			interaction.setItemUsed(true);
+			interaction.setResult(new ItemStack(Material.GLASS_BOTTLE, 1));
+		}
+		else if (item.getType() == Material.GLASS_BOTTLE) {
+			if (cauldron.isEmpty()) return;
+			cauldron.setData((byte) (cauldron.getData() - 1));
+			minecart.setDisplayBlock(cauldron);
+			minecart.getWorld().playSound(minecart.getLocation(), Sound.ITEM_BOTTLE_FILL, 1.0F, 1.0F);
+			interaction.setSuccess(true);
+			interaction.setItemUsed(true);
+			interaction.setResult(new ItemStack(Material.POTION, 1));
+		}
+	}
+	
+	private static void interactWithCake(BlockCartInteraction interaction) {
+		if (!interaction.hasPlayer()) return;
+		interaction.setSuccess(true);
+		
+		Player player = interaction.getPlayer();
+		Minecart cart = interaction.getMinecart();
+		Cake cakeData = (Cake) cart.getDisplayBlock();
+		if (player.getFoodLevel() >= 20) return;
+		
+		cakeData.setSlicesRemaining(cakeData.getSlicesRemaining() - 1);
+		cart.setDisplayBlock(cakeData);
+		player.setFoodLevel(player.getFoodLevel() + 2);
+		player.setSaturation(player.getSaturation() + 0.4F);
+		
+		if (cakeData.getSlicesRemaining() == 0) cart.setDisplayBlock(new MaterialData(Material.AIR));
+	}
+	
+	private static void interactWithEnderchest(BlockCartInteraction interaction) {
+		if (!interaction.hasPlayer()) return;
+		interaction.setSuccess(true);
+		
+		Player player = interaction.getPlayer();
+		Minecart cart = interaction.getMinecart();
+		cart.getWorld().playSound(cart.getLocation(), Sound.BLOCK_ENDERCHEST_OPEN, SoundCategory.BLOCKS, 1.0F, 1.0F);
+		player.openInventory(player.getEnderChest());
+		//TODO: Close sound?
+	}
+	
+	private static void interactWithLever(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		Lever lever = (Lever) minecart.getDisplayBlock();
 		lever.setPowered(!lever.isPowered());
 		minecart.setDisplayBlock(lever);
 		minecart.getWorld().playSound(minecart.getLocation(), Sound.BLOCK_LEVER_CLICK, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
-	private static void interactWithDiode(Minecart minecart) {
+	private static void interactWithDiode(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		Diode diode = (Diode) minecart.getDisplayBlock();
 		diode.setDelay(diode.getDelay()%4 + 1);
 		minecart.setDisplayBlock(diode);
 	}
 	
-	private static void interactWithComparator(Minecart minecart) {
+	private static void interactWithComparator(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		Comparator comparator = (Comparator) minecart.getDisplayBlock();
 		comparator.setSubtractionMode(!comparator.isSubtractionMode());
 		minecart.setDisplayBlock(comparator);
 	}
 	
-	private static void interactWithTrapdoor(Minecart minecart) {
+	private static void interactWithTrapdoor(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		TrapDoor display = (TrapDoor) minecart.getDisplayBlock();
 		display.setOpen(!display.isOpen());
 		minecart.setDisplayBlock(display);
@@ -237,7 +325,9 @@ class BlockCartModule implements Module, Listener {
 		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
-	private static void interactWithIronTrapdoor(Minecart minecart) {
+	private static void interactWithIronTrapdoor(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		TrapDoor display = (TrapDoor) minecart.getDisplayBlock();
 		display.setOpen(!display.isOpen());
 		minecart.setDisplayBlock(display);
@@ -246,7 +336,9 @@ class BlockCartModule implements Module, Listener {
 		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
-	private static void interactWithGate(Minecart minecart) {
+	private static void interactWithGate(BlockCartInteraction interaction) {
+		interaction.setSuccess(true);
+		Minecart minecart = interaction.getMinecart();
 		Gate display = (Gate) minecart.getDisplayBlock();
 		display.setOpen(!display.isOpen());
 		minecart.setDisplayBlock(display);
@@ -303,13 +395,25 @@ class BlockCartModule implements Module, Listener {
 	public void init() {
 		plugin.getServer().getPluginManager().registerEvents(this, plugin);
 		
-		Automation.instance().getActivatorModule().registerHandler(this::handleBlockAdd);
-		Automation.instance().getActivatorModule().registerHandler(Material.SHEARS, this::handleBlockRemove);
+		Automation.instance().getActivatorModule().registerHandler(this::handleDispenser);
 	}
 	
 	@Override
 	public void deinit() {
 		HandlerList.unregisterAll(this);
+	}
+	
+	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+	public void onMinecartCollide(VehicleEntityCollisionEvent event) {
+		if (!(event.getVehicle() instanceof Minecart)) return;
+		Minecart minecart = (Minecart) event.getVehicle();
+		
+		if (!(event.getEntity() instanceof LivingEntity)) return;
+		LivingEntity entity = (LivingEntity) event.getEntity();
+		
+		if (minecart.getDisplayBlock().getItemType() != Material.CACTUS) return;
+		
+		entity.damage(1, minecart);
 	}
 	
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -320,21 +424,17 @@ class BlockCartModule implements Module, Listener {
 		Player player = event.getPlayer();
 		ItemStack handItem = player.getInventory().getItemInMainHand();
 		
-		//Cancel interaction with block cart
-		if (!player.isSneaking() && minecart.getType() == EntityType.MINECART && doesMinecartHaveItem(minecart)) {
-			event.setCancelled(true);
-			//TODO: Use interaction?
-			clickFunctionality.getOrDefault(minecart.getDisplayBlock().getItemType(), (p, m) -> {}).accept(player, minecart);
-		}
-		
 		//Handle interaction
-		Action action = (player.isSneaking() ? Action.REMOVE : Action.ADD);
-		BlockCartInteraction interaction = new BlockCartInteraction(minecart, handItem, action);
+		Action action = (player.isSneaking() ? Action.TAKE : Action.USE);
+		BlockCartInteraction interaction = new BlockCartInteraction(player, minecart, handItem, action);
 		handleInteraction(interaction);
 		
-		//Cancel if nothing was done
+		//Cancel event if interaction succeeded, or minecart has block
+		event.setCancelled(interaction.isSuccess()
+				|| (minecart.getType() == EntityType.MINECART && doesMinecartHaveItem(minecart)));
+		
+		//Return if nothing was done
 		if (!interaction.isSuccess()) return;
-		event.setCancelled(true);
 		
 		//Remove used item from hand
 		if (interaction.isItemUsed()) player.getInventory().setItemInMainHand(InventoryUtil.subtractItem(handItem));
@@ -343,50 +443,35 @@ class BlockCartModule implements Module, Listener {
 		if (interaction.hasResult()) InventoryUtil.givePlayerItem(player, interaction.getResult());
 	}
 	
-	//TODO: Move to a single function for interacting with minecarts?
-	private boolean handleBlockAdd(DispenserInteraction dispInteraction) {
-		//Find facing minecart
-		Minecart minecart = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
-				.filter(entity -> entity instanceof Minecart)
-				.map(entity -> (Minecart) entity)
-				.filter(cart -> !doesMinecartHaveItem(cart))
-				.findAny().orElse(null);
-		if (minecart == null) return false;
-		dispInteraction.validate();
-		
-		//Handle interaction
-		BlockCartInteraction interaction = new BlockCartInteraction(minecart, dispInteraction.getItem(), Action.ADD);
+	private BlockCartInteraction attemptInteract(Minecart minecart, ItemStack item, Action action) {
+		BlockCartInteraction interaction = new BlockCartInteraction(minecart, item, action);
 		handleInteraction(interaction);
-		
-		//Fail if nothing was done
-		if (!interaction.isSuccess()) return false;
-		
-		//Success
-		dispInteraction.validate();
-		dispInteraction.setKeepItem(!interaction.isItemUsed());
-		if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
-		return true;
+		return interaction;
 	}
 	
-	private boolean handleBlockRemove(DispenserInteraction dispInteraction) {
-		dispInteraction.validate();
+	private boolean handleDispenser(DispenserInteraction dispInteraction) {
+		if (dispInteraction.getItem().getType() == Material.SHEARS) dispInteraction.validate();
+		Action action = dispInteraction.getItem().getType() == Material.SHEARS ? Action.TAKE : Action.USE;
+		ItemStack item = action == Action.USE ? dispInteraction.getItem() : new ItemStack(Material.AIR);
 		
-		//Find facing minecart
-		Minecart minecart = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
+		//Find facing minecarts
+		Collection<Minecart> minecarts = BlockUtil.getEntitiesInBlock(dispInteraction.getFacingBlock()).stream()
 				.filter(entity -> entity instanceof Minecart)
 				.map(entity -> (Minecart) entity)
-				.filter(BlockCartModule::doesMinecartHaveItem)
+				.collect(Collectors.toList());
+		//None found, stop
+		if (minecarts.isEmpty()) return false;
+		dispInteraction.validate();
+		
+		//Iterate over minecarts, stopping on success
+		BlockCartInteraction interaction = minecarts.stream()
+				.map(cart -> attemptInteract(cart, item, action))
+				.filter(BlockCartInteraction::isSuccess)
 				.findAny().orElse(null);
-		if (minecart == null) return false;
-		
-		//Handle interaction
-		BlockCartInteraction interaction = new BlockCartInteraction(minecart, new ItemStack(Material.AIR), Action.REMOVE);
-		handleInteraction(interaction);
-		
-		//Fail if nothing was done
-		if (!interaction.isSuccess()) return false;
+		if (interaction == null) return false;
 		
 		//Success
+		dispInteraction.setKeepItem(!interaction.isItemUsed());
 		if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
 		return true;
 	}
@@ -404,7 +489,7 @@ class BlockCartModule implements Module, Listener {
 		Minecart minecart = (Minecart) event.getVehicle();
 		if (minecart.getDisplayBlock().getItemType() == Material.AIR) return;
 		
-		BlockCartInteraction interaction = new BlockCartInteraction(minecart, new ItemStack(Material.AIR), Action.REMOVE);
+		BlockCartInteraction interaction = new BlockCartInteraction(minecart, new ItemStack(Material.AIR), Action.TAKE);
 		removeFromCart(interaction);
 		ItemStack item = interaction.getResult();
 		interaction.getMinecart().getWorld().dropItemNaturally(interaction.getMinecart().getLocation().add(0, 0.5, 0), item);
@@ -414,7 +499,7 @@ class BlockCartModule implements Module, Listener {
 			minecart = interaction.getMinecart();
 			assert(minecart.getType() == EntityType.MINECART);
 			
-			//Recall event
+			//Re-call event
 			event.setCancelled(true);
 			VehicleDestroyEvent newEvent = new VehicleDestroyEvent(minecart, event.getAttacker());
 			Bukkit.getServer().getPluginManager().callEvent(newEvent);
@@ -432,8 +517,9 @@ class BlockCartModule implements Module, Listener {
 	}
 	
 	private void handleInteraction(BlockCartInteraction interaction) {
-		if (interaction.getAction() == Action.ADD) addToCart(interaction);
-		else if (interaction.getAction() == Action.REMOVE) removeFromCart(interaction);
+		if (interaction.getAction() == Action.TAKE) removeFromCart(interaction);
+		else if (doesMinecartHaveItem(interaction.getMinecart())) useOnCart(interaction);
+		else addToCart(interaction);
 	}
 	
 	private void addToCart(BlockCartInteraction interaction) {
@@ -465,6 +551,7 @@ class BlockCartModule implements Module, Listener {
 		
 		//Set display
 		minecart.setDisplayBlock(displayOverride.getOrDefault(usedType, ItemStack::getData).apply(interaction.getItem()));
+		minecart.getWorld().playSound(minecart.getLocation(), Sound.ENTITY_ITEMFRAME_ADD_ITEM, 0.5F, 0.75F);
 		
 		//Finalize stuff
 		finalWork.getOrDefault(usedType, (i, m) -> {}).accept(interaction.getItem(), minecart);
@@ -474,9 +561,9 @@ class BlockCartModule implements Module, Listener {
 		interaction.setSuccess(true);
 	}
 	
-	private void removeFromCart(Minecart minecart) {
-		removeFromCart(new BlockCartInteraction(minecart, new ItemStack(Material.AIR), Action.REMOVE));
-	}
+	//private void removeFromCart(Minecart minecart) {
+	//	removeFromCart(new BlockCartInteraction(minecart, new ItemStack(Material.AIR), Action.REMOVE));
+	//}
 	private void removeFromCart(BlockCartInteraction interaction) {
 		Minecart minecart = interaction.getMinecart();
 		MaterialData blockData = minecart.getDisplayBlock();
@@ -488,8 +575,20 @@ class BlockCartModule implements Module, Listener {
 		ItemStack item = takeItemFromCart(minecart);
 		interaction.setResult(item);
 		interaction.setSuccess(true);
-		minecart.setDisplayBlock(new MaterialData(Material.AIR));
 		if (minecart.getType() != EntityType.MINECART) minecart = changeMinecart(interaction, RideableMinecart.class);
+		minecart.setDisplayBlock(new MaterialData(Material.AIR));
+		minecart.getWorld().playSound(minecart.getLocation(), Sound.ENTITY_ITEMFRAME_REMOVE_ITEM, 0.5F, 0.75F);
+	}
+	
+	private void useOnCart(BlockCartInteraction interaction) {
+		Minecart minecart = interaction.getMinecart();
+		MaterialData blockData = minecart.getDisplayBlock();
+		
+		//Ensure minecart is not empty
+		if (blockData.getItemType() == Material.AIR) return;
+		
+		//Run through handler
+		clickFunctionality.getOrDefault(blockData.getItemType(), (i) -> {}).accept(interaction);
 	}
 	
 	private ItemStack takeItemFromCart(Minecart minecart) {
@@ -497,12 +596,11 @@ class BlockCartModule implements Module, Listener {
 				.apply(minecart);
 	}
 	
-	public static boolean doesMinecartHaveItem(Minecart minecart) {
-		return minecart.getType() != EntityType.MINECART
-				|| minecart.getDisplayBlock().getItemType() != Material.AIR;
+	private static boolean doesMinecartHaveItem(Minecart minecart) {
+		return minecart.getDisplayBlock().getItemType() != Material.AIR;
 	}
 	
-	public static <T extends Minecart> T changeMinecart(BlockCartInteraction interaction, Class<T> clazz) {
+	private static <T extends Minecart> T changeMinecart(BlockCartInteraction interaction, Class<T> clazz) {
 		Minecart minecart = interaction.getMinecart();
 		if (clazz.isInstance(minecart)) return clazz.cast(minecart);
 		
