@@ -1,7 +1,10 @@
 package com.lesserhydra.automation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
@@ -16,8 +19,9 @@ import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
+import org.bukkit.inventory.meta.ItemMeta;
 
-public class PearlModule implements Module, Listener {
+class PearlModule implements Module, Listener {
 	
 	private static final String BINDING_TAG_KEY = "EnderpearlBoundPlayer";
 	
@@ -56,7 +60,7 @@ public class PearlModule implements Module, Listener {
 		event.getItem().setItemStack(newItem);
 	}
 	
-	public boolean handlePearlThrow(DispenserInteraction interaction) {
+	private boolean handlePearlThrow(DispenserInteraction interaction) {
 		interaction.validate();
 		interaction.setKeepItem(false);
 		
@@ -68,7 +72,10 @@ public class PearlModule implements Module, Listener {
 		Player player = boundPlayer.getPlayer();
 		if (player.getWorld() != interaction.getDispenser().getWorld()) return true;
 		
-		player.teleport(interaction.getFacingBlock().getLocation().add(0.5, (interaction.getFacing() == BlockFace.DOWN ? -1.0 : 0.0), 0.5));
+		Location newLocation = interaction.getFacingBlock().getLocation()
+				.add(0.5, (interaction.getFacing() == BlockFace.DOWN ? -1.0 : 0.0), 0.5)
+				.setDirection(player.getLocation().getDirection());
+		player.teleport(newLocation);
 		player.playSound(player.getLocation(), Sound.ENTITY_ENDERMEN_TELEPORT, 1.0F, 1.2F);
 		player.damage(0); //For the effect
 		
@@ -76,6 +83,12 @@ public class PearlModule implements Module, Listener {
 	}
 	
 	private ItemStack bindPearl(ItemStack item, OfflinePlayer bound) {
+		ItemMeta meta = item.getItemMeta();
+		List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>(1);
+		lore.removeIf(line -> line.startsWith("§l§7Bound to ") || line.startsWith("§l§dBound to "));
+		lore.add("§l§7Bound to " + bound.getName());
+		meta.setLore(lore);
+		item.setItemMeta(meta);
 		return BlockBreaking.setCustomTag(item, BINDING_TAG_KEY, bound.getUniqueId().toString());
 	}
 	

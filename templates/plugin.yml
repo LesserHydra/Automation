@@ -2,3 +2,5 @@ name: Automation
 main: @mainClass@
 version: @version@
 author: Roboboy
+
+depend: [ProtocolLib]

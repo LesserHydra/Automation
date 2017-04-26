@@ -4,11 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.craftbukkit.v1_9_R2.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_11_R1.util.CraftMagicNumbers;
 import com.lesserhydra.bukkitutil.SoundEffect;
 import com.lesserhydra.util.MapBuilder;
-import net.minecraft.server.v1_9_R2.Block;
-import net.minecraft.server.v1_9_R2.SoundEffectType;
+import net.minecraft.server.v1_11_R1.Block;
+import net.minecraft.server.v1_11_R1.SoundEffectType;
 
 public enum BlockSoundType {
 	
@@ -27,7 +27,7 @@ public enum BlockSoundType {
 	
 	
 	private static final Map<SoundEffectType, BlockSoundType> typeMap =
-			MapBuilder.init(() -> new HashMap<SoundEffectType, BlockSoundType>())
+			MapBuilder.init(HashMap<SoundEffectType, BlockSoundType>::new)
 			.put(SoundEffectType.a, WOOD)
 			.put(SoundEffectType.b, GRAVEL)
 			.put(SoundEffectType.c, GRASS)
@@ -91,7 +91,7 @@ public enum BlockSoundType {
 	
 	public static BlockSoundType fromType(Material blockType) {
 		Block block = CraftMagicNumbers.getBlock(blockType);
-		return typeMap.get(block.w()); //OBS: Block line 581; step sound getter
+		return typeMap.get(block.getStepSound());
 	}
 	
 }

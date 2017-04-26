@@ -1,33 +1,31 @@
 package com.lesserhydra.automation;
 
 import org.bukkit.plugin.java.JavaPlugin;
-import com.lesserhydra.automation.activator.ActivatorListener;
+import com.lesserhydra.automation.activator.ActivatorModule;
 
 public class Automation extends JavaPlugin {
 	
 	private static Automation instance;
 	
-	//private final AutocrafterListener autocrafterModule = new AutocrafterListener();
-	private final ActivatorListener activatorListener = new ActivatorListener();
-	private final BlockCartListener blockCartModule = new BlockCartListener();
+	private final AutocrafterModule autocrafterModule = new AutocrafterModule(this);
+	private final ActivatorModule activatorModule = new ActivatorModule(this);
+	private final BlockCartModule blockCartModule = new BlockCartModule(this);
 	private final PearlModule pearlModule = new PearlModule(this);
+	private final HopperFilterModule hopperFilterModule = new HopperFilterModule(this);
+	private final PulserModule pulserModule = new PulserModule(this);
 	
 	
 	@Override
 	public void onEnable() {
 		instance = this;
 		
-		getServer().getPluginManager().registerEvents(new HopperFilterListener(), this);
-		getServer().getPluginManager().registerEvents(new PulserListener(), this);
-		getServer().getPluginManager().registerEvents(activatorListener, this);
-		getServer().getPluginManager().registerEvents(blockCartModule, this);
-		//getServer().getPluginManager().registerEvents(autocrafterModule, this);
-		
-		//TODO: Abstract out into a module system
-		activatorListener.init();
+		//TODO: Seperate modules into plugins with common utility library?
+		activatorModule.init();
 		blockCartModule.init();
 		pearlModule.init();
-		//autocrafterModule.init();
+		autocrafterModule.init();
+		hopperFilterModule.init();
+		pulserModule.init();
 		
 		//TODO: Stop canceled hoppers from checking on next tick
 		//TODO: Need some way to check if a cart is holding a block. Comparator/plate-track combo seems intuitive
@@ -36,18 +34,19 @@ public class Automation extends JavaPlugin {
 	
 	@Override
 	public void onDisable() {
+		pulserModule.deinit();
+		hopperFilterModule.deinit();
+		autocrafterModule.deinit();
 		pearlModule.deinit();
+		blockCartModule.deinit();
+		activatorModule.deinit();
 		
 		instance = null;
 	}
 	
-	public ActivatorListener getActivatorModule() {
-		return activatorListener;
-	}
+	public ActivatorModule getActivatorModule() { return activatorModule; }
 	
-	public static Automation instance() {
-		return instance;
-	}
+	public static Automation instance() { return instance; }
 	
 	public static void log(String msg) {
 		instance.getLogger().info(msg);

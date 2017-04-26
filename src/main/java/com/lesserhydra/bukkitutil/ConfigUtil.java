@@ -1,4 +1,4 @@
-package com.lesserhydra.util;
+package com.lesserhydra.bukkitutil;
 
 import java.util.List;
 import java.util.stream.Collectors;

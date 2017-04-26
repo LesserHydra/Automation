@@ -7,7 +7,6 @@ import org.bukkit.material.Diode;
 
 /**
  * A collection of misc utilities dealing with redstone.
- * @author Justin Lawen
  */
 public class RedstoneUtil {
 	
