@@ -7,7 +7,7 @@ apply plugin: 'java'
 import org.ajoberstar.grgit.*
 import org.apache.tools.ant.filters.ReplaceTokens
 
-version = generateVersion('0.2')
+version = generateVersion('0.3')
 String pluginMain = 'com.lesserhydra.automation.Automation'
 
 repositories {
