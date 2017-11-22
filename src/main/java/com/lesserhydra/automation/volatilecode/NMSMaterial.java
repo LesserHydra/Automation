@@ -4,11 +4,11 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.block.PistonMoveReaction;
-import org.bukkit.craftbukkit.v1_11_R1.util.CraftMagicNumbers;
+import org.bukkit.craftbukkit.v1_12_R1.util.CraftMagicNumbers;
 import com.lesserhydra.util.MapBuilder;
-import net.minecraft.server.v1_11_R1.Block;
-import net.minecraft.server.v1_11_R1.EnumPistonReaction;
-import net.minecraft.server.v1_11_R1.Material;
+import net.minecraft.server.v1_12_R1.Block;
+import net.minecraft.server.v1_12_R1.EnumPistonReaction;
+import net.minecraft.server.v1_12_R1.Material;
 
 enum NMSMaterial {
 	
@@ -109,7 +109,7 @@ enum NMSMaterial {
 	@SuppressWarnings("deprecation")
 	public static NMSMaterial fromType(org.bukkit.Material blockType) {
 		Block block = CraftMagicNumbers.getBlock(blockType);
-		return typeMap.get(block.q(block.getBlockData())); //OBF: Line 321, Get block material
+		return typeMap.get(block.q(block.getBlockData())); //OBF: Line 136, Get block material
 	}
 	
 }

@@ -127,10 +127,10 @@ public class ActivatorModule implements Module, Listener {
 		//For valid interactions (mainly matching tools), cancel event even if unsuccessful
 		if (!interaction.isValid()) return;
 		event.setCancelled(true);
+		cancelDispenserSound(event.getBlock());
 		
 		//Apply interaction
 		if (!success) return;
-		cancelDispenserSound(event.getBlock());
 		Bukkit.getScheduler().runTaskLater(Automation.instance(), () -> {
 			handleItem(dispenser, interaction);
 			handleAddedItems(dispenser, interaction);
