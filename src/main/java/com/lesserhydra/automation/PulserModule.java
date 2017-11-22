@@ -1,16 +1,24 @@
 package com.lesserhydra.automation;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import com.lesserhydra.automation.volatilecode.NMSRedstone;
+import com.lesserhydra.bukkitutil.AdvancementUtil;
+import com.lesserhydra.util.SetBuilder;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.Hopper;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.BrewEvent;
 import org.bukkit.event.inventory.FurnaceSmeltEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -18,6 +26,13 @@ import org.bukkit.material.Diode;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 
 class PulserModule implements Module, Listener {
+	
+	private static final Set<Material> pulsingMaterials = SetBuilder.init(HashSet<Material>::new)
+			.add(Material.HOPPER)
+			.add(Material.BREWING_STAND)
+			.add(Material.FURNACE)
+			.add(Material.BURNING_FURNACE)
+			.buildImmutable();
 	
 	private final Automation plugin;
 	
@@ -31,6 +46,18 @@ class PulserModule implements Module, Listener {
 	@Override
 	public void deinit() {
 		HandlerList.unregisterAll(this);
+	}
+	
+	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onPulserPlace(BlockPlaceEvent event) {
+		if (event.getItemInHand().getType() != Material.DIODE) return;
+		BlockState state = event.getBlockPlaced().getState();
+		if (!(state.getData() instanceof Diode)) return;
+		BlockFace facing = ((Diode) state.getData()).getFacing();
+		Block pulsingBlock = event.getBlockPlaced().getRelative(facing.getOppositeFace());
+		if (!pulsingMaterials.contains(pulsingBlock.getType())) return;
+		
+		AdvancementUtil.giveAdvancement(event.getPlayer(), Bukkit.getAdvancement(new NamespacedKey(plugin, "placepulser")));
 	}
 	
 	@EventHandler (priority = EventPriority.MONITOR, ignoreCancelled = true)

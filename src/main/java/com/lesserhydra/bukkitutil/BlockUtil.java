@@ -45,6 +45,7 @@ public class BlockUtil {
 		return block.getWorld().getNearbyEntities(block.getLocation().add(0.5, 0.5, 0.5), 0.6, 0.6, 0.6).stream()
 				.filter(entity -> entity instanceof ItemFrame)
 				.map(entity -> (ItemFrame) entity)
+				.filter(frame -> InventoryUtil.itemIsValid(frame.getItem()))
 				.collect(Collectors.toList());
 	}
 	

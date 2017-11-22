@@ -1,7 +1,7 @@
 package com.lesserhydra.automation;
 
-import org.bukkit.plugin.java.JavaPlugin;
 import com.lesserhydra.automation.activator.ActivatorModule;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public class Automation extends JavaPlugin {
 	

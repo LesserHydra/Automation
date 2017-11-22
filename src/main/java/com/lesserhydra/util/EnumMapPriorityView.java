@@ -53,7 +53,7 @@ public class EnumMapPriorityView<P extends Enum<P>, E> implements PriorityView<P
 	
 	private boolean remove(P priority, E element) {
 		LinkedList<E> list = priorities.get(priority);
-		return (list == null ? false : list.remove(list));
+		return list != null && list.remove(element);
 	}
 	
 	@Override

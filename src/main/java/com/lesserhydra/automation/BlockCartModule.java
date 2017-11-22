@@ -2,11 +2,13 @@ package com.lesserhydra.automation;
 
 import com.lesserhydra.automation.BlockCartInteraction.Action;
 import com.lesserhydra.automation.activator.DispenserInteraction;
+import com.lesserhydra.bukkitutil.AdvancementUtil;
 import com.lesserhydra.bukkitutil.BlockUtil;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.MapBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.block.BlockFace;
@@ -424,10 +426,24 @@ class BlockCartModule implements Module, Listener {
 		Player player = event.getPlayer();
 		ItemStack handItem = player.getInventory().getItemInMainHand();
 		
+		boolean cartWasEmpty = !doesMinecartHaveItem(minecart);
+		
 		//Handle interaction
 		Action action = (player.isSneaking() ? Action.TAKE : Action.USE);
 		BlockCartInteraction interaction = new BlockCartInteraction(player, minecart, handItem, action);
 		handleInteraction(interaction);
+		
+		minecart = interaction.getMinecart();
+		
+		//Handle advancements
+		if (interaction.isSuccess()) {
+			if (action == Action.TAKE) {
+				AdvancementUtil.giveAdvancement(event.getPlayer(), Bukkit.getAdvancement(new NamespacedKey(plugin, "takefromcart")));
+			} else {
+				if (cartWasEmpty) AdvancementUtil.giveAdvancement(event.getPlayer(), Bukkit.getAdvancement(new NamespacedKey(plugin, "addtocart")));
+				else AdvancementUtil.giveAdvancement(event.getPlayer(), Bukkit.getAdvancement(new NamespacedKey(plugin, "useoncart")));
+			}
+		}
 		
 		//Cancel event if interaction succeeded, or minecart has block
 		event.setCancelled(interaction.isSuccess()

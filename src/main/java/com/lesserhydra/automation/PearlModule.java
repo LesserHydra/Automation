@@ -15,7 +15,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerPickupItemEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.inventory.ItemStack;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.volatilecode.BlockBreaking;
@@ -53,10 +53,11 @@ class PearlModule implements Module, Listener {
 	}
 	
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-	public void onEnderpearlGrabbed(PlayerPickupItemEvent event) {
+	public void onEnderpearlGrabbed(EntityPickupItemEvent event) {
+		if (!(event.getEntity() instanceof OfflinePlayer)) return;
 		ItemStack item = event.getItem().getItemStack();
 		if (item == null || item.getType() != Material.ENDER_PEARL) return;
-		ItemStack newItem = bindPearl(item, event.getPlayer());
+		ItemStack newItem = bindPearl(item, (OfflinePlayer) event.getEntity());
 		event.getItem().setItemStack(newItem);
 	}
 	

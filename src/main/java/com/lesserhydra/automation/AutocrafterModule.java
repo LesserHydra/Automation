@@ -3,17 +3,18 @@ package com.lesserhydra.automation;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.activator.Priority;
 import com.lesserhydra.automation.volatilecode.Crafter;
+import com.lesserhydra.bukkitutil.AdvancementUtil;
 import com.lesserhydra.bukkitutil.BlockUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.Dispenser;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Item;
@@ -21,7 +22,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockRedstoneEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -29,7 +30,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.material.Comparator;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 
@@ -52,8 +52,8 @@ class AutocrafterModule implements Module, Listener {
 		MaterialData whiteGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.WHITE.getWoolData());
 		@SuppressWarnings("deprecation")
 		MaterialData blackGlassData = new MaterialData(Material.STAINED_GLASS_PANE, DyeColor.BLACK.getWoolData());
-		Bukkit.getServer().addRecipe(new ShapelessRecipe(getFillerItem()).addIngredient(whiteGlassData));
-		Bukkit.getServer().addRecipe(new ShapelessRecipe(getBlockerItem()).addIngredient(blackGlassData));
+		Bukkit.getServer().addRecipe(new ShapelessRecipe(new NamespacedKey(plugin, "filter"), getFillerItem()).addIngredient(whiteGlassData));
+		Bukkit.getServer().addRecipe(new ShapelessRecipe(new NamespacedKey(plugin, "blocker"), getBlockerItem()).addIngredient(blackGlassData));
 		
 		plugin.getActivatorModule().registerHandler(this::handleAutocrafting, Priority.OVERRIDE);
 		plugin.getServer().getPluginManager().registerEvents(this, plugin);
@@ -64,24 +64,60 @@ class AutocrafterModule implements Module, Listener {
 		HandlerList.unregisterAll(this);
 	}
 	
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+	public void onMakeAutocrafter(BlockPlaceEvent event) {
+		if (!didMakeAutocrafter(event.getBlockPlaced())) return;
+		AdvancementUtil.giveAdvancement(event.getPlayer(), Bukkit.getAdvancement(new NamespacedKey(plugin, "makecrafter")));
+	}
+	
+	private boolean didMakeAutocrafter(Block placed) {
+		if (BlockUtil.isHalfSlab(placed)) {
+			BlockFace slabFace = BlockUtil.getHalfSlabFace(placed);
+			Block other = placed.getRelative(slabFace);
+			
+			if (other.getType() != Material.DISPENSER) return false;
+			Dispenser dispenser = (Dispenser) other.getState();
+			BlockFace dispFace = ((Directional)dispenser.getData()).getFacing();
+			return dispFace == slabFace.getOppositeFace();
+		}
+		else if (placed.getType() == Material.DISPENSER) {
+			Dispenser dispenser = (Dispenser) placed.getState();
+			BlockFace dispFace = ((Directional)dispenser.getData()).getFacing();
+			Block other = placed.getRelative(dispFace);
+			
+			if (!BlockUtil.isHalfSlab(other)) return false;
+			BlockFace slabFace = BlockUtil.getHalfSlabFace(other);
+			return dispFace == slabFace.getOppositeFace();
+		}
+		else return false;
+	}
+	
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
 	public void onAutocrafterInventoryMove(InventoryMoveItemEvent event) {
+		if (event instanceof InventoryMoveItemAutocrafterEvent) return;
 		if (event.getDestination().getLocation().getBlock().getType() != Material.DISPENSER) return;
 		
 		if (!isAutocrafter((Dispenser)event.getDestination().getHolder())) return;
 		
 		ItemStack item = event.getItem();
-		event.setCancelled(true);
-		
 		Inventory source = event.getSource();
 		Inventory destination = event.getDestination();
-		Runnable moveTask = () -> {
+		
+		//Cancel behavior, rerun event
+		event.setCancelled(true);
+		
+		//Move item
+		Bukkit.getScheduler().runTaskLater(Automation.instance(), () -> {
 			int firstEmpty = destination.firstEmpty();
 			if (firstEmpty < 0) return;
+			
+			InventoryMoveItemAutocrafterEvent newEvent = new InventoryMoveItemAutocrafterEvent(source, item, destination);
+			Bukkit.getPluginManager().callEvent(newEvent);
+			if (newEvent.isCancelled()) return;
+			
 			destination.setItem(firstEmpty, item);
 			source.removeItem(item);
-		};
-		Bukkit.getScheduler().runTaskLater(Automation.instance(), moveTask, 0L);
+		}, 0L);
 	}
 	
 	private boolean handleAutocrafting(DispenserInteraction interaction) {
