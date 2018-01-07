@@ -1,17 +1,23 @@
 package com.lesserhydra.automation.volatilecode;
 
+import net.minecraft.server.v1_12_R1.Blocks;
 import net.minecraft.server.v1_12_R1.Container;
 import net.minecraft.server.v1_12_R1.CraftingManager;
 import net.minecraft.server.v1_12_R1.EntityHuman;
 import net.minecraft.server.v1_12_R1.IRecipe;
 import net.minecraft.server.v1_12_R1.InventoryCraftResult;
 import net.minecraft.server.v1_12_R1.InventoryCrafting;
+import net.minecraft.server.v1_12_R1.Item;
 import net.minecraft.server.v1_12_R1.ItemStack;
 import net.minecraft.server.v1_12_R1.World;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.v1_12_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_12_R1.block.CraftDispenser;
+import org.bukkit.craftbukkit.v1_12_R1.inventory.CraftInventoryCrafting;
 import org.bukkit.craftbukkit.v1_12_R1.inventory.CraftItemStack;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
+import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.InventoryView;
 
 import java.util.Collections;
@@ -38,7 +44,7 @@ public class Crafter {
 		InventoryCrafting invCraft = new InventoryCrafting(new Container() {
 			@Override
 			public InventoryView getBukkitView() {
-				//TODO: How???
+				//TODO: How?
 				return null;
 			}
 			@Override
@@ -60,9 +66,19 @@ public class Crafter {
 		if (!optionalRecipe.isPresent()) return Collections.emptyList();
 		IRecipe recipe = optionalRecipe.get();
 		
-		//Do crafting
-		ItemStack craftingResult = recipe.craftItem(invCraft); //Gets result, does not use items
-		//TODO: Should this send the pre-crafting event?
+      	//Set result from recipe
+		invCraft.resultInventory.setItem(0, recipe.craftItem(invCraft)); //Gets result, does not use items
+  
+		//Run through Bukkit PrepareItemCraftEvent
+		CraftingInventory craftingInventory = new CraftInventoryCrafting(invCraft, invCraft.resultInventory);
+		PrepareItemCraftEvent prepareEvent = new PrepareItemCraftEvent(craftingInventory, null, false);
+		Bukkit.getPluginManager().callEvent(prepareEvent);
+		ItemStack craftingResult = invCraft.resultInventory.getItem(0);
+		
+		//TODO: Run through Bukkit CraftItemEvent?
+  
+		//Cancel if no result
+		if (craftingResult.getItem() == Item.getItemOf(Blocks.AIR)) return Collections.emptyList();
 		
 		//Build results list
 		List<org.bukkit.inventory.ItemStack> results = new LinkedList<>();
