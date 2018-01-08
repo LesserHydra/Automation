@@ -1,5 +1,6 @@
 package com.lesserhydra.automation.volatilecode;
 
+import com.lesserhydra.bukkitutil.nms.NMSTileEntityUtil;
 import net.minecraft.server.v1_12_R1.Blocks;
 import net.minecraft.server.v1_12_R1.Container;
 import net.minecraft.server.v1_12_R1.CraftingManager;
@@ -31,7 +32,7 @@ public class Crafter {
 	
 	public static int getMissingStack(org.bukkit.block.Dispenser dispenser, org.bukkit.inventory.ItemStack missingItem) {
 		ItemStack nmsMissing = CraftItemStack.asNMSCopy(missingItem);
-		List<ItemStack> contents = BlockBreaking.getTileEntity((CraftDispenser)dispenser).getContents();
+		List<ItemStack> contents = NMSTileEntityUtil.getTileEntity((CraftDispenser)dispenser).getContents();
 		for (int i = 0; i < 9; ++i) {
 			ItemStack stack = contents.get(i);
 			if (stack.getCount() == 0 && stack.doMaterialsMatch(nmsMissing)) return i;

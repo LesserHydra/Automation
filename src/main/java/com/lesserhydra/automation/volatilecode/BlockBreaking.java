@@ -1,14 +1,16 @@
 package com.lesserhydra.automation.volatilecode;
 
-import net.minecraft.server.v1_12_R1.*;
-import org.bukkit.block.Dispenser;
+import net.minecraft.server.v1_12_R1.Block;
+import net.minecraft.server.v1_12_R1.BlockPosition;
+import net.minecraft.server.v1_12_R1.IBlockData;
+import net.minecraft.server.v1_12_R1.Item;
+import net.minecraft.server.v1_12_R1.ItemStack;
+import net.minecraft.server.v1_12_R1.NBTTagCompound;
+import net.minecraft.server.v1_12_R1.World;
 import org.bukkit.craftbukkit.v1_12_R1.CraftChunk;
 import org.bukkit.craftbukkit.v1_12_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_12_R1.block.CraftBlockEntityState;
-import org.bukkit.craftbukkit.v1_12_R1.block.CraftDispenser;
 import org.bukkit.craftbukkit.v1_12_R1.inventory.CraftItemStack;
 import org.bukkit.craftbukkit.v1_12_R1.util.CraftMagicNumbers;
-import org.bukkit.entity.EnderPearl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -19,30 +21,17 @@ import java.util.stream.Collectors;
 public class BlockBreaking {
 	
 	private static Method BLOCK_GET_SILKTOUCH;
-	private static Method BLOCK_GET_TILE_ENTITY;
 
 	static {
 		try {
 			//OBF: getSilktouch(IBlockData) Line 517, gets block as silktouched item
 			BLOCK_GET_SILKTOUCH = Block.class.getDeclaredMethod("u", IBlockData.class);
 			BLOCK_GET_SILKTOUCH.setAccessible(true);
-			//getTileEntity()
-			BLOCK_GET_TILE_ENTITY = CraftBlockEntityState.class.getDeclaredMethod("getTileEntity");
-			BLOCK_GET_TILE_ENTITY.setAccessible(true);
 		} catch (NoSuchMethodException e) {
 			e.printStackTrace();
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T extends TileEntity> T getTileEntity(CraftBlockEntityState<T> blockEntityState) {
-		try {
-			return (T) BLOCK_GET_TILE_ENTITY.invoke(blockEntityState);
-		} catch (IllegalAccessException | InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-	}
-	
 	public static String getCustomTag(org.bukkit.inventory.ItemStack item, String key) {
 		ItemStack nmsItem = CraftItemStack.asNMSCopy(item);
 		NBTTagCompound compound = nmsItem.getTag();
@@ -68,21 +57,6 @@ public class BlockBreaking {
 		if (compound.isEmpty()) nmsItem.setTag(null);
 		
 		return CraftItemStack.asBukkitCopy(nmsItem);
-	}
-	
-	public static EnderPearl launchPearl(Dispenser source) {
-		TileEntityDispenser dispenserBlock = getTileEntity((CraftDispenser)source);
-		World world = dispenserBlock.getWorld();
-		EntityEnderPearl pearl = new EntityEnderPearl(world);
-		SourceBlock isourceblock = new SourceBlock(dispenserBlock.getWorld(), dispenserBlock.getPosition());
-		IPosition iposition = BlockDispenser.a(isourceblock); //OBF: Line 152, gets position in front of dispenser
-		EnumDirection enumdirection = isourceblock.e().get(BlockDirectional.FACING);
-		
-		pearl.setPosition(iposition.getX(), iposition.getY(), iposition.getZ());
-		pearl.shoot((double) enumdirection.getAdjacentX(), (double) ((float) enumdirection.getAdjacentY() + 0.1F), (double) enumdirection.getAdjacentZ(), 1.1F, 6.0F);
-		world.addEntity(pearl);
-		
-		return (EnderPearl) pearl.getBukkitEntity();
 	}
 	
 	@SuppressWarnings("deprecation")
