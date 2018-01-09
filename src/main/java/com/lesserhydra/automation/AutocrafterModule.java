@@ -2,9 +2,9 @@ package com.lesserhydra.automation;
 
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.activator.Priority;
-import com.lesserhydra.automation.volatilecode.Crafter;
 import com.lesserhydra.bukkitutil.AdvancementUtil;
 import com.lesserhydra.bukkitutil.BlockUtil;
+import com.lesserhydra.bukkitutil.InventoryUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -138,7 +138,7 @@ class AutocrafterModule implements Module, Listener {
 				.toArray(ItemStack[]::new);
 		
 		//Do crafting
-		List<ItemStack> results = Crafter.craft(craftingContents, dispenser.getWorld());
+		List<ItemStack> results = InventoryUtil.craft(craftingContents, dispenser.getWorld());
 		
 		//Handle success
 		if (!results.isEmpty()) {
@@ -182,7 +182,7 @@ class AutocrafterModule implements Module, Listener {
 	}
 	
 	private void replaceItem(Dispenser dispenser, ItemStack item) {
-		int missing = Crafter.getMissingStack(dispenser, item);
+		int missing = InventoryUtil.getMissingStack(dispenser.getInventory(), item);
 		if (missing == -1) dispenser.getInventory().addItem(item);
 		else dispenser.getInventory().setItem(missing, item);
 	}
