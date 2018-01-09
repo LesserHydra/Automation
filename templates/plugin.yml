@@ -3,4 +3,4 @@ main: @mainClass@
 version: @version@
 author: Justin Lawen
 
-depend: [HydraBukkitUtil, ProtocolLib]
+depend: [HydraCore, ProtocolLib]

@@ -4,8 +4,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import com.lesserhydra.automation.volatilecode.NMSRedstone;
 import com.lesserhydra.bukkitutil.AdvancementUtil;
+import com.lesserhydra.bukkitutil.RedstoneUtil;
 import com.lesserhydra.util.SetBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -81,7 +81,7 @@ class PulserModule implements Module, Listener {
 				.map(pulserBlock::getRelative)
 				.filter(sideBlock -> sideBlock.getType() == Material.DIODE_BLOCK_OFF || sideBlock.getType() == Material.DIODE_BLOCK_ON)
 				.filter(sideBlock -> pulserBlock.getRelative(((Diode) sideBlock.getState().getData()).getFacing()).equals(sideBlock))
-				.forEach(NMSRedstone::activateRepeater);
+				.forEach(RedstoneUtil::activateRepeater);
 	}
 	
 }

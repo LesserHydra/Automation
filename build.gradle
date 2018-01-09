@@ -19,8 +19,8 @@ repositories {
 
 dependencies {
   compile 'org.jetbrains:annotations:15.0'
-  compile 'org.bukkit:craftbukkit:1.12.2-R0.1-SNAPSHOT'
-  compile 'com.lesserhydra:HydraBukkitUtil:1.0-SNAPSHOT'
+  compile 'org.bukkit:bukkit:1.12.2-R0.1-SNAPSHOT'
+  compile ('com.lesserhydra:HydraCore:1.0.0-SNAPSHOT') { transitive = false }
   compile 'com.comphenix.protocol:ProtocolLib-API:4.2.1'
 }
 
