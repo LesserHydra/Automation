@@ -129,9 +129,9 @@ class HopperFilterModule implements Module, Listener {
 	private static boolean itemsMatch(ItemStack filterItem, ItemStack item, boolean itemHasDurability) {
 		return filterItem != null
 				&& (item.getType() == filterItem.getType())
-				&& (itemHasDurability || item.getDurability() == filterItem.getDurability())
-				&& item.hasItemMeta() == filterItem.hasItemMeta()
-				&& (!item.hasItemMeta() || Bukkit.getItemFactory().equals(item.getItemMeta(), filterItem.getItemMeta()));
+				&& (itemHasDurability || item.getDurability() == filterItem.getDurability());
+				//&& item.hasItemMeta() == filterItem.hasItemMeta()
+				//&& (!item.hasItemMeta() || Bukkit.getItemFactory().equals(item.getItemMeta(), filterItem.getItemMeta()));
 	}
 	
 	/*private static boolean checkAdvancedFilterLine(String line, ItemStack item) {
