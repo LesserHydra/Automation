@@ -5,6 +5,8 @@ import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.bukkitutil.AdvancementUtil;
 import com.lesserhydra.bukkitutil.BlockUtil;
 import com.lesserhydra.bukkitutil.InventoryUtil;
+import com.lesserhydra.bukkitutil.TileEntityUtil;
+import com.lesserhydra.bukkitutil.TileEntityWrapper;
 import com.lesserhydra.util.MapBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -60,8 +62,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 class BlockCartModule implements Module, Listener {
-	
-	//TODO: TrainCarts compatability
 	
 	//TODO: LOTS of cleanup, including:
 	//Combine maps, use single class that controls how different materials are handled
@@ -132,7 +132,7 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.SILVER_SHULKER_BOX, BlockCartModule::finilizeShulkerCart)
 					.put(Material.WHITE_SHULKER_BOX, BlockCartModule::finilizeShulkerCart)
 					.put(Material.YELLOW_SHULKER_BOX, BlockCartModule::finilizeShulkerCart)
-					//.put(Material.MOB_SPAWNER, BlockCartModule::finalizeSpawner)
+					.put(Material.MOB_SPAWNER, BlockCartModule::finalizeSpawner)
 					.buildImmutable();
 
 	private final Map<Material, Function<Minecart, ItemStack>> itemReturnOverride =
@@ -162,7 +162,7 @@ class BlockCartModule implements Module, Listener {
 					.put(Material.SILVER_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
 					.put(Material.WHITE_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
 					.put(Material.YELLOW_SHULKER_BOX, BlockCartModule::shulkerboxReturn)
-					//.put(Material.MOB_SPAWNER, BlockCartModule::spawnerReturn)
+					.put(Material.MOB_SPAWNER, BlockCartModule::spawnerReturn)
 					.put(Material.DIODE_BLOCK_OFF, item -> new ItemStack(Material.DIODE, 1))
 					.put(Material.REDSTONE_COMPARATOR_OFF, item -> new ItemStack(Material.REDSTONE_COMPARATOR, 1))
 					.put(Material.DAYLIGHT_DETECTOR_INVERTED, item -> new ItemStack(Material.DAYLIGHT_DETECTOR, 1))
@@ -349,18 +349,31 @@ class BlockCartModule implements Module, Listener {
 		minecart.getWorld().playSound(minecart.getLocation(), sound, SoundCategory.BLOCKS, 1.0F, 1.0F);
 	}
 	
-	//TODO: Currently requires nms
-	/*private static void finalizeSpawner(ItemStack item, Minecart cart) {
+	private static void finalizeSpawner(ItemStack item, Minecart cart) {
 		SpawnerMinecart spawnerCart = (SpawnerMinecart) cart;
 		BlockStateMeta meta = (BlockStateMeta) item.getItemMeta();
 		if (!meta.hasBlockState()) return;
 		
-		CreatureSpawner spawnerState = (CreatureSpawner) meta.getBlockState();
-		spawnerCart.set
+        TileEntityWrapper tile = TileEntityUtil.getTileEntity(meta);
+        assert tile != null;
+        tile.copyTo(spawnerCart);
+        spawnerCart.setCustomName(meta.getDisplayName());
 	}
 	
 	private static ItemStack spawnerReturn(Minecart minecart) {
-	}*/
+      ItemStack item = minecart.getDisplayBlock().toItemStack(1);
+      if (!(minecart instanceof SpawnerMinecart)) return item;
+      
+      SpawnerMinecart spawnerCart = (SpawnerMinecart) minecart;
+      BlockStateMeta meta = (BlockStateMeta) item.getItemMeta();
+      
+      TileEntityWrapper tile = TileEntityUtil.getTileEntity(spawnerCart);
+      tile.copyTo(meta);
+      meta.setDisplayName(spawnerCart.getCustomName());
+      spawnerCart.setCustomName(null);
+      item.setItemMeta(meta);
+      return item;
+	}
 	
 	private static void finilizeShulkerCart(ItemStack item, Minecart cart) {
 		StorageMinecart storage = (StorageMinecart) cart;
@@ -421,6 +434,7 @@ class BlockCartModule implements Module, Listener {
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onMinecartClicked(PlayerInteractEntityEvent event) {
 		if (!(event.getRightClicked() instanceof Minecart)) return;
+        if (!event.getRightClicked().isValid()) return;
 		Minecart minecart = (Minecart) event.getRightClicked();
 		
 		Player player = event.getPlayer();
@@ -480,16 +494,15 @@ class BlockCartModule implements Module, Listener {
 		dispInteraction.validate();
 		
 		//Iterate over minecarts, stopping on success
-		BlockCartInteraction interaction = minecarts.stream()
-				.map(cart -> attemptInteract(cart, item, action))
-				.filter(BlockCartInteraction::isSuccess)
-				.findAny().orElse(null);
-		if (interaction == null) return false;
-		
-		//Success
-		dispInteraction.setKeepItem(!interaction.isItemUsed());
-		if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
-		return true;
+		for (Minecart cart : minecarts) {
+			BlockCartInteraction interaction = attemptInteract(cart, item, action);
+			if (!interaction.isSuccess()) continue;
+			//Success
+			dispInteraction.setKeepItem(!interaction.isItemUsed());
+			if (interaction.hasResult()) dispInteraction.setResults(interaction.getResult());
+			return true;
+		}
+		return false;
 	}
 	
 	@EventHandler(priority = EventPriority.NORMAL)
@@ -618,6 +631,7 @@ class BlockCartModule implements Module, Listener {
 	
 	private static <T extends Minecart> T changeMinecart(BlockCartInteraction interaction, Class<T> clazz) {
 		Minecart minecart = interaction.getMinecart();
+		
 		if (clazz.isInstance(minecart)) return clazz.cast(minecart);
 		
 		if (minecart instanceof InventoryHolder) {

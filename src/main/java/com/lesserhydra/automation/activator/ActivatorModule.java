@@ -3,8 +3,6 @@ package com.lesserhydra.automation.activator;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.lesserhydra.automation.Automation;
 import com.lesserhydra.automation.Module;
-import com.lesserhydra.automation.volatilecode.BlockBreaking;
-import com.lesserhydra.automation.volatilecode.BlockSoundType;
 import com.lesserhydra.bukkitutil.BlockUtil;
 import com.lesserhydra.bukkitutil.InventoryUtil;
 import com.lesserhydra.util.EnumMapPriorityView;
@@ -252,7 +250,7 @@ public class ActivatorModule implements Module, Listener {
 		if (interaction.getFacingBlock().getType() == Material.AIR) return false;
 		if (!canBreakBlock(interaction.getFacingBlock(), interaction.getItem())) return false;
 		
-		boolean instant = BlockBreaking.isInstantlyBreakable(interaction.getFacingBlock());
+		boolean instant = BlockUtil.isInstantlyBreakable(interaction.getFacingBlock().getType());
 		ItemStack[] results = breakBlock(interaction.getFacingBlock(), interaction.getItem());
 		if (!instant) interaction.setDamageItem(true);
 		interaction.setResults(results);
@@ -632,7 +630,7 @@ public class ActivatorModule implements Module, Listener {
 		Material blockType = itemMaterialMappings.getOrDefault(blockItem.getType(), blockItem.getType());
 		
 		//Play sound
-		BlockSoundType.fromType(blockType).getPlaceEffect().play(block.getLocation());
+		BlockUtil.getSound(blockType).getPlaceEffect().play(block.getLocation());
 		
 		//Place block
 		BlockState blockState = block.getState();
@@ -649,7 +647,7 @@ public class ActivatorModule implements Module, Listener {
 	}
 	
 	private boolean canBreakBlock(Block block, ItemStack tool) {
-		return !BlockBreaking.isUnbreakable(block)
+		return !BlockUtil.isUnbreakable(block.getType())
 				&& BlockUtil.blockCanBeBrokenByTool(block, tool);
 	}
 	
@@ -670,7 +668,7 @@ public class ActivatorModule implements Module, Listener {
 			return new ItemStack[]{result};
 		}
 		
-		ItemStack[] results = BlockBreaking.getDrops(block, tool).toArray(new ItemStack[0]);
+		ItemStack[] results = BlockUtil.getDrops(block, tool).toArray(new ItemStack[0]);
 		block.setType(Material.AIR);
 		return results;
 	}

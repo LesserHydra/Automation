@@ -1,8 +1,7 @@
 package com.lesserhydra.automation;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import com.lesserhydra.automation.activator.DispenserInteraction;
+import com.lesserhydra.bukkitutil.InventoryUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -14,12 +13,17 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
-import com.lesserhydra.automation.activator.DispenserInteraction;
-import com.lesserhydra.automation.volatilecode.BlockBreaking;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 
 class PearlModule implements Module, Listener {
 	
@@ -83,6 +87,7 @@ class PearlModule implements Module, Listener {
 		return true;
 	}
 	
+	@NotNull
 	private ItemStack bindPearl(ItemStack item, OfflinePlayer bound) {
 		ItemMeta meta = item.getItemMeta();
 		List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>(1);
@@ -90,12 +95,13 @@ class PearlModule implements Module, Listener {
 		lore.add("§l§7Bound to " + bound.getName());
 		meta.setLore(lore);
 		item.setItemMeta(meta);
-		return BlockBreaking.setCustomTag(item, BINDING_TAG_KEY, bound.getUniqueId().toString());
+		return InventoryUtil.setCustomTag(item, BINDING_TAG_KEY, bound.getUniqueId().toString());
 	}
 	
+	@Nullable
 	private OfflinePlayer getBoundPearl(ItemStack item) {
-		String boundString = BlockBreaking.getCustomTag(item, BINDING_TAG_KEY);
-		if (boundString.isEmpty()) return null;
+		String boundString = InventoryUtil.getCustomTag(item, BINDING_TAG_KEY);
+		if (boundString == null) return null;
 		return Bukkit.getOfflinePlayer(UUID.fromString(boundString));
 	}
 	

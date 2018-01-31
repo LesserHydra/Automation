@@ -1,6 +1,6 @@
 name: Automation
 main: @mainClass@
 version: @version@
-author: Roboboy
+author: Justin Lawen
 
-depend: [ProtocolLib]
+depend: [HydraCore, ProtocolLib]

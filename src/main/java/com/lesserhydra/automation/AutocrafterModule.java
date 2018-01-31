@@ -1,10 +1,12 @@
 package com.lesserhydra.automation;
 
+import com.google.common.collect.Streams;
 import com.lesserhydra.automation.activator.DispenserInteraction;
 import com.lesserhydra.automation.activator.Priority;
-import com.lesserhydra.automation.volatilecode.Crafter;
 import com.lesserhydra.bukkitutil.AdvancementUtil;
 import com.lesserhydra.bukkitutil.BlockUtil;
+import com.lesserhydra.bukkitutil.CraftingGrid;
+import com.lesserhydra.bukkitutil.InventoryUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.DyeColor;
@@ -33,12 +35,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.material.Directional;
 import org.bukkit.material.MaterialData;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
 
 class AutocrafterModule implements Module, Listener {
 	
@@ -128,48 +128,55 @@ class AutocrafterModule implements Module, Listener {
 		Dispenser dispenser = interaction.getDispenser();
 		replaceItem(dispenser, interaction.getItem());
 		
-		ItemStack[] craftingContents = Arrays.stream(dispenser.getInventory().getContents())
-				.map(item -> item != null ? item.clone() : new ItemStack(Material.AIR))
-				.map(item -> itemIsFiller(item) || itemIsBlocker(item) ? new ItemStack(Material.AIR) : item)
-				.peek(item -> item.setAmount(1))
-				.toArray(ItemStack[]::new);
-		ItemStack[] remainingContents = Arrays.stream(dispenser.getInventory().getContents())
-				.map(item -> item != null && itemIsBlocker(item) ? item.clone() : new ItemStack(Material.AIR))
-				.toArray(ItemStack[]::new);
+		ItemStack[] fillerContents = new ItemStack[9];
+		ItemStack[] remainingContents = new ItemStack[9];
+		ItemStack[] craftingContents = new ItemStack[9];
+		
+		ItemStack[] originalDispenserContents = dispenser.getInventory().getContents();
+		for (int i = 0; i < 9; ++i) {
+			fillerContents[i] = new ItemStack(Material.AIR);
+			remainingContents[i] = new ItemStack(Material.AIR);
+			craftingContents[i] = new ItemStack(Material.AIR);
+			
+			ItemStack item = originalDispenserContents[i];
+			if (item == null) continue;
+			if (itemIsBlocker(item)) remainingContents[i] = item;
+			else if (itemIsFiller(item)) fillerContents[i] = item;
+			else craftingContents[i] = item;
+		}
 		
 		//Do crafting
-		List<ItemStack> results = Crafter.craft(craftingContents, dispenser.getWorld());
+		CraftingGrid result = InventoryUtil.craft(new CraftingGrid(craftingContents), dispenser.getWorld());
+		
+		Collection<ItemStack> toDrop = new ArrayList<>(10);
 		
 		//Handle success
-		if (!results.isEmpty()) {
-			dispenser.getInventory().removeItem(craftingContents);
+		if (result.isSuccess()) {
+			toDrop.add(result.getResult());
 			dispenser.getWorld().playSound(dispenser.getLocation(), Sound.BLOCK_PISTON_EXTEND, 0.8F, 2F);
 			
 			Location partLoc = interaction.getFacingBlock().getLocation().add(0.5, 0.5, 0.5);
 			dispenser.getWorld().spawnParticle(Particle.CLOUD, partLoc, 20, 0.2, 0.1, 0.2, 0.05);
+		} else {
+			dispenser.getWorld().playSound(dispenser.getLocation(), Sound.BLOCK_WOOD_BUTTON_CLICK_OFF, 0.8F, 0.7F);
 		}
 		
 		//Drop result and remaining items
-		dispenser.getInventory().removeItem(remainingContents);
-		Collection<ItemStack> toDrop = new LinkedList<>();
-		Arrays.stream(dispenser.getInventory().getContents())
-				.filter(Objects::nonNull)
+		Streams.concat(Arrays.stream(result.getContents()), Arrays.stream(fillerContents))
 				.filter(item -> item.getType() != Material.AIR)
-				.filter(item -> item.getAmount() > 0)
 				.forEach(toDrop::add);
-		toDrop.addAll(results);
 		
 		BlockFace facing = ((Directional) dispenser.getData()).getFacing();
 		Block dropBlock = dispenser.getBlock().getRelative(facing, 2);
 		if (dropBlock.getState() instanceof InventoryHolder) {
 			InventoryHolder dest = (InventoryHolder) dropBlock.getState();
-			HashMap<Integer, ItemStack> remaining = dest.getInventory().addItem(toDrop.toArray(new ItemStack[]{}));
+			HashMap<Integer, ItemStack> remaining = dest.getInventory().addItem(toDrop.toArray(new ItemStack[0]));
 			toDrop = remaining.values();
 		}
 		
 		for (ItemStack item: toDrop) {
 			Location dropLocation = dispenser.getLocation().add(0.5 + facing.getModX()/1.3, 0.5 - 0.15 + facing.getModY()*33.0/26.0, 0.5 + facing.getModZ()/1.3);
-			Item itemEntity = dispenser.getWorld().dropItem/*Naturally*/(dropLocation, item);
+			Item itemEntity = dispenser.getWorld().dropItem(dropLocation, item);
 			//itemEntity.setVelocity(event.getVelocity()); //TODO: Random velocity
 		}
 		
@@ -182,7 +189,7 @@ class AutocrafterModule implements Module, Listener {
 	}
 	
 	private void replaceItem(Dispenser dispenser, ItemStack item) {
-		int missing = Crafter.getMissingStack(dispenser, item);
+		int missing = InventoryUtil.getMissingStack(dispenser.getInventory(), item);
 		if (missing == -1) dispenser.getInventory().addItem(item);
 		else dispenser.getInventory().setItem(missing, item);
 	}
