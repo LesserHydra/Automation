@@ -8,7 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class Automation extends JavaPlugin {
   
-  private static final int CORE_MAJOR = 1;
+  private static final int CORE_MAJOR = 2;
   private static final int CORE_MINOR = 0;
   
   private static Automation instance;
@@ -37,7 +37,6 @@ public class Automation extends JavaPlugin {
             + CORE_MAJOR + "." + CORE_MINOR + "+.");
         //TODO: Links
       }
-      
       getPluginLoader().disablePlugin(this);
       return;
     }
